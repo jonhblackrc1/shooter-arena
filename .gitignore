@@ -1,0 +1,11 @@
+# Local tooling / editor
+.claude/
+.vscode/
+*.log
+
+# OS junk
+Thumbs.db
+.DS_Store
+
+# Local dev server script (not part of the deployable app)
+server.ps1
