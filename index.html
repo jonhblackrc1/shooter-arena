@@ -259,10 +259,37 @@
     .menuShell { gap:8px; padding-top:calc(env(safe-area-inset-top,0px) + 8px); }
     .menuPlayBtn { padding:13px; font-size:18px; }
   }
+  /* ===== "Rotate your device" prompt — the game is meant for landscape ===== */
+  #rotateHint {
+    display:none; position:fixed; inset:0; z-index:9999;
+    flex-direction:column; align-items:center; justify-content:center; gap:18px;
+    background:radial-gradient(circle at 50% 45%, rgba(40,20,70,0.98), rgba(8,4,14,1));
+    color:#e8e6f5; text-align:center; padding:30px;
+  }
+  #rotateHint .phone {
+    width:54px; height:92px; border:3px solid #caa3ff; border-radius:12px;
+    animation:rotatePhone 2.2s ease-in-out infinite;
+  }
+  @keyframes rotatePhone {
+    0%,18%   { transform:rotate(0deg); }
+    50%,68%  { transform:rotate(-90deg); }
+    100%     { transform:rotate(-90deg); }
+  }
+  #rotateHint .rTitle { font-size:22px; font-weight:900; letter-spacing:2px; color:#f5d77a; }
+  #rotateHint .rSub { font-size:14px; color:#9b94c4; max-width:300px; line-height:1.6; }
+  /* show only on touch phones held vertically */
+  @media (orientation:portrait) and (pointer:coarse) and (max-width:900px) {
+    #rotateHint { display:flex; }
+  }
 </style>
 </head>
 <body>
 <canvas id="game"></canvas>
+<div id="rotateHint">
+  <div class="phone"></div>
+  <div class="rTitle">GIRA TU DISPOSITIVO</div>
+  <div class="rSub">SHOOTER ARENA se juega en horizontal.<br>Pon tu teléfono en posición apaisada.</div>
+</div>
 <button id="pauseBtn" aria-label="Menu">&#9208;</button>
 
 <div class="hud" id="hud" style="display:none">
@@ -484,7 +511,7 @@ function goFullscreen(){
   const req = el.requestFullscreen || el.webkitRequestFullscreen || el.webkitRequestFullScreen || el.mozRequestFullScreen || el.msRequestFullscreen;
   if(req){ try{ const p=req.call(el); if(p&&p.catch) p.catch(()=>{}); }catch(e){} }
   // best-effort portrait lock (supported on Android/Chrome; ignored elsewhere)
-  try{ if(screen.orientation && screen.orientation.lock) screen.orientation.lock('portrait').catch(()=>{}); }catch(e){}
+  try{ if(screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(()=>{}); }catch(e){}
 }
 function isFs(){ return !!(document.fullscreenElement || document.webkitFullscreenElement); }
 function exitFullscreen(){
@@ -523,7 +550,7 @@ const endmsg=document.getElementById('endmsg'), overSub=document.getElementById(
 const retryBtn=document.getElementById('retryBtn'), quitBtn=document.getElementById('quitBtn');
 
 // ---- World ----
-const MAP_W=1050, MAP_H=1400; // map reduced 50% (2100x2800 -> 1050x1400)
+const MAP_W=1400, MAP_H=1050; // landscape arena (wider than tall) for horizontal play
 let cam={x:0,y:0};
 let decor=[]; // post-apocalyptic scenery (buildings, cars, debris, ...)
 let obstacles=[]; // solid crates you can't walk through
