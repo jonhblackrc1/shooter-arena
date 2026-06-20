@@ -501,17 +501,33 @@ if(window.visualViewport){ window.visualViewport.addEventListener('resize', resi
 document.addEventListener('fullscreenchange', ()=>setTimeout(resize,80));
 resize();
 
-// ---- Always-on fullscreen ----
+// ---- Always-on fullscreen + landscape ----
 // Browsers only allow entering fullscreen from a user gesture, so we request it
 // on the first interaction and again whenever a game starts.
+// IMPORTANT: orientation.lock() only works *while in fullscreen*, so it must run
+// AFTER requestFullscreen resolves — not immediately, or it silently fails.
+function lockLandscape(){
+  try{
+    if(screen.orientation && screen.orientation.lock){
+      const p = screen.orientation.lock('landscape');
+      if(p && p.catch) p.catch(()=>{});
+    }
+  }catch(e){}
+}
 function goFullscreen(){
   const el = document.documentElement;
   const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
-  if(fsEl) return;
+  if(fsEl){ lockLandscape(); return; }            // already fullscreen → just lock orientation
   const req = el.requestFullscreen || el.webkitRequestFullscreen || el.webkitRequestFullScreen || el.mozRequestFullScreen || el.msRequestFullscreen;
-  if(req){ try{ const p=req.call(el); if(p&&p.catch) p.catch(()=>{}); }catch(e){} }
-  // best-effort portrait lock (supported on Android/Chrome; ignored elsewhere)
-  try{ if(screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(()=>{}); }catch(e){}
+  if(req){
+    try{
+      const p = req.call(el);
+      if(p && p.then){ p.then(lockLandscape).catch(lockLandscape); }  // wait for fullscreen, THEN lock
+      else { setTimeout(lockLandscape, 130); }     // older Safari: no promise returned
+    }catch(e){ lockLandscape(); }
+  } else {
+    lockLandscape();                               // no Fullscreen API (iOS Safari) — try anyway
+  }
 }
 function isFs(){ return !!(document.fullscreenElement || document.webkitFullscreenElement); }
 function exitFullscreen(){
@@ -523,6 +539,9 @@ function toggleFullscreen(){ if(isFs()) exitFullscreen(); else goFullscreen(); }
 function updateFsBtn(){ const b=document.getElementById('fsBtn'); if(b) b.textContent = isFs() ? '🗗' : '⛶'; }
 document.addEventListener('fullscreenchange', updateFsBtn);
 document.addEventListener('webkitfullscreenchange', updateFsBtn);
+// whenever we enter fullscreen (any path), enforce landscape
+document.addEventListener('fullscreenchange', ()=>{ if(isFs()) lockLandscape(); });
+document.addEventListener('webkitfullscreenchange', ()=>{ if(isFs()) lockLandscape(); });
 { const _fsb=document.getElementById('fsBtn'); if(_fsb) _fsb.addEventListener('click', e=>{ e.stopPropagation(); toggleFullscreen(); }); }
 // arm fullscreen on the very first tap/click anywhere
 function armFullscreenOnce(){
