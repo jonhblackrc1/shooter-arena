@@ -14,8 +14,8 @@
 <link rel="icon" type="image/png" href="icon-192.png">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
-  html,body { width:100%; height:100%; overflow:hidden; background:#07080f; font-family:'Trebuchet MS', sans-serif; position:fixed; inset:0; overscroll-behavior:none; }
-  #game { display:block; width:100vw; height:100vh; width:100dvw; height:100dvh; touch-action:none; background:#0b0d18; }
+  html,body { width:100%; height:100%; overflow:hidden; background:#07080f; font-family:'Trebuchet MS', sans-serif; position:fixed; inset:0; overscroll-behavior:none; -webkit-text-size-adjust:100%; text-size-adjust:100%; touch-action:manipulation; }
+  #game { display:block; position:fixed; inset:0; z-index:0; width:100vw; height:100vh; width:100dvw; height:100dvh; touch-action:none; background:#0b0d18; }
   /* overlays fill the *visible* viewport (dvh) so nothing is hidden behind mobile browser bars */
   .overlay { height:100dvh; }
   .overlay {
@@ -95,7 +95,8 @@
   .btn-alt:active { transform:scale(0.95); }
   .info { margin-top:26px; font-size:13px; color:#7d77a3; line-height:1.9; max-width:340px; }
   .hud {
-    position:fixed; top:0; left:0; right:0; padding:10px 14px; z-index:5;
+    position:fixed; top:0; left:0; right:0; z-index:5;
+    padding:calc(env(safe-area-inset-top,0px) + 10px) calc(env(safe-area-inset-right,0px) + 14px) 10px calc(env(safe-area-inset-left,0px) + 14px);
     display:flex; justify-content:space-between; align-items:flex-start;
     pointer-events:none; color:#e8e6f5; font-weight:bold; text-shadow:0 1px 3px #000;
   }
@@ -131,7 +132,10 @@
   .menuShell {
     position:relative; z-index:1; width:100%; max-width:1100px; height:100dvh; margin:0 auto;
     display:flex; flex-direction:column; align-items:stretch; gap:12px;
-    padding:calc(env(safe-area-inset-top,0px) + 12px) 14px calc(env(safe-area-inset-bottom,0px) + 12px);
+    padding-top:calc(env(safe-area-inset-top,0px) + 12px);
+    padding-bottom:calc(env(safe-area-inset-bottom,0px) + 12px);
+    padding-left:max(14px, env(safe-area-inset-left,0px));
+    padding-right:max(14px, env(safe-area-inset-right,0px));
     animation:shellIn .45s cubic-bezier(.2,.7,.3,1) both;
   }
   @keyframes shellIn { from { opacity:0; transform:translateY(14px) scale(.98); } to { opacity:1; transform:none; } }
@@ -484,23 +488,43 @@ const ctx = canvas.getContext('2d');
 let W, H, DPR;
 let ZOOM=0.7;           // zoomed out a bit more (0.8 -> 0.7) → wider view for portrait
 let VW=0, VH=0;         // visible world size = screen / zoom
+
+// ---- iOS Safe Areas (notch / Dynamic Island / home indicator), read in JS ----
+let safeInsets={top:0,right:0,bottom:0,left:0};
+const _safeProbe=document.createElement('div');
+_safeProbe.style.cssText='position:fixed;top:0;left:0;width:0;height:0;visibility:hidden;pointer-events:none;'+
+  'padding-top:env(safe-area-inset-top);padding-right:env(safe-area-inset-right);'+
+  'padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);';
+function readSafeInsets(){
+  if(!_safeProbe.isConnected && document.body) document.body.appendChild(_safeProbe);
+  const s=getComputedStyle(_safeProbe);
+  safeInsets.top=parseFloat(s.paddingTop)||0;     safeInsets.right=parseFloat(s.paddingRight)||0;
+  safeInsets.bottom=parseFloat(s.paddingBottom)||0; safeInsets.left=parseFloat(s.paddingLeft)||0;
+}
 function resize(){
-  DPR = Math.min(window.devicePixelRatio||1, 2);
-  // Prefer the *visual* viewport so the canvas always matches the visible area
-  // (handles mobile browser bars showing/hiding and pinch-zoom).
+  DPR = Math.min(window.devicePixelRatio||1, 2);   // cap DPR (perf on hi-DPR iPhones)
+  // Measure the canvas's own CSS box (it is fixed + 100dvw/100dvh = the real
+  // visible screen, edge-to-edge under the notch). This is the most reliable
+  // value across Safari Mobile and Chrome; visualViewport/innerHeight are fallbacks.
+  const rect = canvas.getBoundingClientRect();
   const vv = window.visualViewport;
-  W = Math.round(vv ? vv.width  : window.innerWidth);
-  H = Math.round(vv ? vv.height : window.innerHeight);
-  canvas.width = W*DPR; canvas.height = H*DPR;
-  canvas.style.width = W+'px'; canvas.style.height = H+'px';
+  W = Math.round(rect.width)  || Math.round(vv ? vv.width  : window.innerWidth);
+  H = Math.round(rect.height) || Math.round(vv ? vv.height : window.innerHeight);
+  canvas.width = Math.round(W*DPR); canvas.height = Math.round(H*DPR);
+  // (CSS sizes the element to 100dvw/100dvh — don't override style w/h)
   ctx.setTransform(DPR,0,0,DPR,0,0);
   VW=W/ZOOM; VH=H/ZOOM;
+  readSafeInsets();
 }
 window.addEventListener('resize', resize);
-window.addEventListener('orientationchange', ()=>setTimeout(resize,120));
+window.addEventListener('orientationchange', ()=>{ setTimeout(resize,120); setTimeout(resize,400); }); // re-measure after iOS settles
 if(window.visualViewport){ window.visualViewport.addEventListener('resize', resize); }
 document.addEventListener('fullscreenchange', ()=>setTimeout(resize,80));
 resize();
+// iOS Safari: block pinch-zoom gestures (double-tap-zoom is already handled by
+// touch-action:manipulation). The game's joysticks use raw touchstart/move, so
+// these high-level gesture events are never needed by gameplay.
+['gesturestart','gesturechange','gestureend'].forEach(ev=>document.addEventListener(ev, e=>e.preventDefault(), {passive:false}));
 
 // ---- Always-on fullscreen + landscape ----
 // Browsers only allow entering fullscreen from a user gesture, so we request it
@@ -1565,9 +1589,12 @@ let mouseScreenX=0, mouseScreenY=0, mouseFireHeld=false;
 
 function controlLayout(){
   const pad=22;
+  // inset the on-screen sticks by the iOS safe areas so they stay reachable and
+  // never sit under the notch / Dynamic Island / home indicator
+  const sl=safeInsets.left, sr=safeInsets.right, sb=safeInsets.bottom;
   return {
-    joyHome:{ x: pad+JOY_R+10,       y: H-pad-JOY_R-10 },
-    aimHome:{ x: W-pad-AIM_JOY_R-10, y: H-pad-AIM_JOY_R-10 }
+    joyHome:{ x: sl+pad+JOY_R+10,       y: H-sb-pad-JOY_R-10 },
+    aimHome:{ x: W-sr-pad-AIM_JOY_R-10, y: H-sb-pad-AIM_JOY_R-10 }
   };
 }
 
