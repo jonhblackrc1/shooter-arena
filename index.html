@@ -129,36 +129,36 @@
     100% { transform:translate3d(3%,4%,0)  scale(1.12); }
   }
   .menuShell {
-    position:relative; z-index:1; width:min(94vw,440px); height:100dvh; margin:0 auto;
+    position:relative; z-index:1; width:100%; max-width:1100px; height:100dvh; margin:0 auto;
     display:flex; flex-direction:column; align-items:stretch; gap:12px;
-    padding:calc(env(safe-area-inset-top,0px) + 16px) 0 calc(env(safe-area-inset-bottom,0px) + 12px);
+    padding:calc(env(safe-area-inset-top,0px) + 12px) 14px calc(env(safe-area-inset-bottom,0px) + 12px);
     animation:shellIn .45s cubic-bezier(.2,.7,.3,1) both;
   }
   @keyframes shellIn { from { opacity:0; transform:translateY(14px) scale(.98); } to { opacity:1; transform:none; } }
-  /* header */
-  .menuHead { flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:10px; }
+  /* top bar: stats (top-left) · title (center) · tabs menu (top-right) */
+  .menuTopBar { flex-shrink:0; display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; }
+  .topRight { display:flex; align-items:center; gap:8px; flex-shrink:0; }
   .menuTitle {
-    font-size:clamp(26px,7.6vh,52px); letter-spacing:3px; line-height:0.9; margin:0;
+    font-size:clamp(17px,3.2vh,28px); letter-spacing:2px; line-height:1; margin:0; white-space:nowrap;
     animation:titleGlow 3.6s ease-in-out infinite;
   }
   @keyframes titleGlow {
     0%,100% { filter:drop-shadow(0 0 12px rgba(176,124,255,0.35)); }
     50%     { filter:drop-shadow(0 0 22px rgba(245,215,122,0.55)); }
   }
-  /* fullscreen toggle (top-right) */
+  /* fullscreen toggle (sits in the top bar) */
   .fsBtn {
-    position:absolute; top:calc(env(safe-area-inset-top,0px) + 12px); right:14px; z-index:4;
-    width:42px; height:42px; border-radius:12px; padding:0; line-height:1;
+    flex-shrink:0; width:40px; height:40px; border-radius:12px; padding:0; line-height:1;
     background:rgba(255,255,255,0.06); border:1px solid rgba(176,124,255,0.4);
     color:#e8e6f5; font-size:19px; cursor:pointer; display:flex; align-items:center; justify-content:center;
     backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); -webkit-tap-highlight-color:transparent;
     transition:transform .15s, background .2s;
   }
   .fsBtn:active { transform:scale(0.88); background:rgba(176,124,255,0.25); }
-  /* stat pills */
-  .statRow { display:flex; gap:10px; }
+  /* stat pills (top-left) */
+  .statRow { display:flex; gap:8px; align-items:center; flex-shrink:0; }
   .statPill {
-    display:flex; align-items:center; gap:6px; padding:7px 16px; border-radius:30px;
+    display:flex; align-items:center; gap:6px; padding:7px 14px; border-radius:30px;
     background:rgba(255,255,255,0.05); border:1px solid rgba(176,124,255,0.35);
     backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
     font-size:14px; font-weight:900; color:#e8e6f5; letter-spacing:0.5px;
@@ -166,16 +166,16 @@
   }
   .statPill.gold { border-color:rgba(255,210,77,0.5); color:#ffd24d; }
   .statIco { font-size:15px; }
-  /* tab bar */
-  .menuTabBar { display:flex; gap:6px; width:100%; flex-shrink:0; }
+  /* tab bar menu (top-right) — compact, content-width */
+  .menuTabBar { display:flex; gap:5px; width:auto; flex-shrink:0; }
   .menuTab {
-    flex:1; padding:9px 2px; border:1px solid rgba(176,124,255,0.18); border-radius:16px;
-    background:rgba(255,255,255,0.03); color:#9b94c4; font-size:10px; font-weight:bold;
-    cursor:pointer; letter-spacing:0.6px; -webkit-tap-highlight-color:transparent;
-    transition:all .2s; display:flex; flex-direction:column; align-items:center; gap:3px;
+    flex:0 0 auto; min-width:52px; padding:6px 9px; border:1px solid rgba(176,124,255,0.18); border-radius:14px;
+    background:rgba(255,255,255,0.03); color:#9b94c4; font-size:9px; font-weight:bold;
+    cursor:pointer; letter-spacing:0.5px; -webkit-tap-highlight-color:transparent;
+    transition:all .2s; display:flex; flex-direction:column; align-items:center; gap:2px;
     position:relative; overflow:hidden;
   }
-  .menuTab .tabIco { font-size:18px; line-height:1; filter:grayscale(0.4) opacity(0.7); transition:all .2s; }
+  .menuTab .tabIco { font-size:16px; line-height:1; filter:grayscale(0.4) opacity(0.7); transition:all .2s; }
   .menuTab.active {
     background:linear-gradient(135deg,rgba(245,215,122,0.18),rgba(176,124,255,0.18));
     color:#f5d77a; border-color:rgba(245,215,122,0.55);
@@ -189,7 +189,7 @@
   }
   @keyframes tabBar { from { transform:scaleX(0); } to { transform:scaleX(1); } }
   /* slider fills the remaining height; panes scroll internally so the menu never overflows */
-  .menuSliderWrap { width:100%; flex:1 1 auto; min-height:0; overflow:hidden; border-radius:18px; }
+  .menuSliderWrap { width:100%; max-width:680px; margin:0 auto; flex:1 1 auto; min-height:0; overflow:hidden; border-radius:18px; }
   .menuSlider { display:flex; height:100%; will-change:transform; transition:transform .32s cubic-bezier(.4,0,.2,1); }
   .menuPane {
     min-width:100%; width:100%; height:100%; overflow-y:auto; box-sizing:border-box; padding:4px 4px 10px;
@@ -252,10 +252,11 @@
   .modeIcon { font-size:34px; line-height:1; flex-shrink:0; }
   .modeName { color:#f5d77a; font-weight:bold; font-size:15px; letter-spacing:1px; }
   .modeDesc { font-size:12px; color:#9b94c4; margin-top:2px; line-height:1.5; }
-  /* landscape: drop the title to one line so the flex menu stays comfortable */
+  /* hide the centre title when the top bar gets tight, so stats + tabs always fit */
+  @media (max-width:680px){
+    .menuTitle { display:none; }
+  }
   @media (max-height:430px){
-    .menuTitle br { display:none; }
-    .menuTitle { font-size:clamp(20px,8vw,32px); letter-spacing:2px; }
     .menuShell { gap:8px; padding-top:calc(env(safe-area-inset-top,0px) + 8px); }
     .menuPlayBtn { padding:13px; font-size:18px; }
   }
@@ -313,23 +314,23 @@
 </div>
 
 <div class="overlay" id="startScreen">
-  <button class="fsBtn" id="fsBtn" aria-label="Pantalla completa">⛶</button>
   <div class="menuShell">
-    <!-- ── Header ── -->
-    <div class="menuHead">
-      <div class="title menuTitle">SHOOTER<br>ARENA</div>
+    <!-- ── Top bar: stats (top-left) · title · tabs menu (top-right) ── -->
+    <div class="menuTopBar">
       <div class="statRow">
         <div class="statPill"><span class="statIco">🏆</span><span id="hiscoreMenu">0</span></div>
         <div class="statPill gold"><span class="statIco">🪙</span><span id="coinsMenu">0</span></div>
       </div>
-    </div>
-
-    <!-- ── Tab bar ── -->
-    <div class="menuTabBar" id="menuTabBar">
-      <button class="menuTab active" data-pane="0"><span class="tabIco">🦸</span><span class="tabTxt">CHARS</span></button>
-      <button class="menuTab"        data-pane="1"><span class="tabIco">🔫</span><span class="tabTxt">WEAPONS</span></button>
-      <button class="menuTab"        data-pane="2"><span class="tabIco">🎮</span><span class="tabTxt">MODES</span></button>
-      <button class="menuTab"        data-pane="3"><span class="tabIco">🏆</span><span class="tabTxt">RANKING</span></button>
+      <div class="title menuTitle">SHOOTER ARENA</div>
+      <div class="topRight">
+        <button class="fsBtn" id="fsBtn" aria-label="Pantalla completa">⛶</button>
+        <div class="menuTabBar" id="menuTabBar">
+          <button class="menuTab active" data-pane="0"><span class="tabIco">🦸</span><span class="tabTxt">CHARS</span></button>
+          <button class="menuTab"        data-pane="1"><span class="tabIco">🔫</span><span class="tabTxt">WEAPONS</span></button>
+          <button class="menuTab"        data-pane="2"><span class="tabIco">🎮</span><span class="tabTxt">MODES</span></button>
+          <button class="menuTab"        data-pane="3"><span class="tabIco">🏆</span><span class="tabTxt">RANKING</span></button>
+        </div>
+      </div>
     </div>
 
     <!-- ── Swipeable panes ── -->
@@ -603,6 +604,151 @@ const LEVELS=[
   {name:"LEVEL 20",enemies:34, espeed:2.60,ehp:12,eShoot:0.034, boss:{name:"LA PARKA",           hp:550, speed:1.82,fireRate:9,  color:'#101015', skin:'reaper'}},
 ];
 
+// ============================================================
+//  ENEMY SYSTEM — extend to 50 levels, kinds, elites, scaling
+// ============================================================
+// Levels 1-20 above keep their hand-tuned values. Levels 21-50 continue the
+// same curves gently (no spikes) and add a boss every 5th level.
+(function(){
+  const lateBosses=[
+    {name:"NEXARI PRIME",   hp:820, speed:1.90, fireRate:12, color:'#ffae42', skin:'mech'},      // L25
+    {name:"TITAN MAW",      hp:1050,speed:1.95, fireRate:11, color:'#ff5ad1', skin:'slimeking'}, // L30
+    {name:"GLACIUS TYRANT", hp:1300,speed:2.00, fireRate:10, color:'#5ad1ff', skin:'crystal'},   // L35
+    {name:"THE WATCHER",    hp:1600,speed:2.05, fireRate:9,  color:'#ff5a9d', skin:'cyclops'},    // L40
+    {name:"OMEGA SWARM",    hp:1950,speed:2.10, fireRate:9,  color:'#9d5aff', skin:'swarm'},      // L45
+    {name:"VOID EMPEROR",   hp:2500,speed:2.15, fireRate:8,  color:'#b07cff', skin:'hydra'},      // L50
+  ];
+  for(let lvl=21; lvl<=50; lvl++){
+    const k=lvl-20;
+    LEVELS.push({
+      name:'LEVEL '+lvl,
+      enemies:Math.round(34 + k*1.3),
+      espeed:+(2.60 + k*0.030).toFixed(3),
+      ehp:12 + Math.round(k*1.1),
+      eShoot:+(0.034 + k*0.0012).toFixed(4),
+      boss:(lvl%5===0) ? lateBosses[(lvl-25)/5] : null
+    });
+  }
+})();
+
+// Max enemies alive at once (rises with level; the rest trickle in as kills happen).
+function levelMaxAlive(lvl){ return Math.min(12 + Math.floor(lvl*0.7), 38); }
+
+// Per-kind base tuning. Elite multipliers are layered on top.
+const KIND={
+  melee:   { r:14, hpMul:1.30, spdMul:1.22, score:100, coin:0 },
+  ranged:  { r:13, hpMul:1.00, spdMul:0.95, score:120, coin:0 },
+  charger: { r:16, hpMul:1.65, spdMul:1.00, score:170, coin:1 },
+};
+const ELITE={ hpMul:1.75, dmgMul:1.6, spdMul:1.14, rMul:1.22, scoreMul:2.6, coinBonus:3 };
+
+// Base hp / contact damage grow smoothly with the level number.
+function enemyBaseHp(lvl){ return 2 + lvl*0.6; }      // L1≈2.6  L20≈14  L50≈32
+function meleeHitDmg(lvl){ return 6 + lvl*0.22; }     // L1≈6.2  L50≈17
+function chargerHitDmg(lvl){ return 12 + lvl*0.36; }  // L1≈12.4 L50≈30
+
+// Build a single enemy of the given kind / elite tier for the current level.
+function makeEnemy(kind, elite, cfg, x, y){
+  const lvl=level+1;
+  const K=KIND[kind];
+  let hp=enemyBaseHp(lvl)*K.hpMul;
+  let spd=cfg.espeed*K.spdMul;
+  let r=K.r, score=K.score, coin=K.coin;
+  let dmg = kind==='charger' ? chargerHitDmg(lvl) : (kind==='melee' ? meleeHitDmg(lvl) : 0);
+  if(elite){
+    hp*=ELITE.hpMul; spd*=ELITE.spdMul; r*=ELITE.rMul; dmg*=ELITE.dmgMul;
+    score=Math.round(score*ELITE.scoreMul); coin+=ELITE.coinBonus;
+  }
+  hp=Math.max(1, Math.round(hp));
+  const e={ x, y, r:Math.round(r), hp, maxHp:hp, speed:spd, kind, elite:!!elite,
+            boss:false, melee:(kind==='melee'), dmg, score, coin, faceAng:0,
+            wob:Math.random()*Math.PI*2, fireCD:Math.random()*60, astate:'chase', atimer:0, struck:false };
+  if(kind==='ranged'){ e.shoot=cfg.eShoot; e.strafe=(Math.random()<0.5?1:-1); }
+  if(kind==='charger'){ e.cstate='roam'; e.ctimer=0; e.cdx=0; e.cdy=0; e.chargeDist=0; }
+  return e;
+}
+
+// Weighted roster per level: which kinds spawn and how many are Elite.
+function levelRoster(lvl){
+  const w=[]; const add=(kind,elite,n)=>{ for(let i=0;i<n;i++) w.push({kind,elite}); };
+  if(lvl<=5){            add('melee',false,10); }                                                   // only melee
+  else if(lvl<=10){      add('melee',false,8);  add('ranged',false,3); }                            // mostly melee + some ranged
+  else if(lvl<=15){      add('melee',false,5);  add('ranged',false,5); }                            // balanced
+  else if(lvl<=20){      add('melee',false,5);  add('ranged',false,4); add('charger',false,2); }    // chargers appear
+  else if(lvl<=25){      add('melee',false,5);  add('ranged',false,4); add('charger',false,4); }    // more chargers
+  else if(lvl<=30){      add('melee',false,4);  add('melee',true,2);  add('ranged',false,4); add('charger',false,3); } // melee elite
+  else if(lvl<=35){      add('melee',false,4);  add('melee',true,2);  add('ranged',false,3); add('ranged',true,2); add('charger',false,3); } // ranged elite
+  else if(lvl<=40){      add('melee',false,3);  add('melee',true,2);  add('ranged',false,3); add('ranged',true,2); add('charger',false,2); add('charger',true,2); } // charger elite
+  else if(lvl<=45){      add('melee',false,3);  add('melee',true,3);  add('ranged',false,3); add('ranged',true,3); add('charger',false,2); add('charger',true,2); } // intense mix
+  else {                 add('melee',false,2);  add('melee',true,4);  add('ranged',false,2); add('ranged',true,3); add('charger',false,3); add('charger',true,4); } // max difficulty
+  return w;
+}
+function pickEnemyType(lvl){ const w=levelRoster(lvl); return w[(Math.random()*w.length)|0]; }
+
+// Spawn one enemy at a ring around the players (used both at level start and to refill).
+function spawnEnemyAt(){
+  const cfg=LEVELS[level];
+  const ref=alivePlayers()[0]||{x:MAP_W/2,y:MAP_H/2};
+  const ang=Math.random()*Math.PI*2;
+  const dist=340+Math.random()*420;
+  let x=ref.x+Math.cos(ang)*dist, y=ref.y+Math.sin(ang)*dist;
+  x=Math.max(60,Math.min(MAP_W-60,x));
+  y=Math.max(60,Math.min(MAP_H-60,y));
+  const t=pickEnemyType(level+1);
+  enemies.push(makeEnemy(t.kind, t.elite, cfg, x, y));
+}
+
+// ---- Melee attack cycle: chase → wind-up (telegraph) → strike (damage on the
+//      exact strike frame) → recovery. ----
+function updateMeleeEnemy(e, tp, a, dist){
+  e.faceAng=a;
+  const reach = e.r + (tp?tp.r:14) + 8;
+  if(e.astate==='windup'){
+    e.atimer--;                                  // brief telegraph, holds position
+    if(e.atimer<=0){ e.astate='strike'; e.atimer=7; e.struck=false; }
+  } else if(e.astate==='strike'){
+    moveColliding(e, Math.cos(a)*e.speed*1.8, Math.sin(a)*e.speed*1.8);  // lunge forward
+    if(!e.struck && tp && dist < reach+6){       // damage lands at the impact frame, once
+      if(damagePlayer(tp, e.dmg)){ if(tp.isLocal){ sfx('hurt'); haptic(60); addShake(0.5); } tp.invuln=Math.max(tp.invuln||0,16); }
+      e.struck=true;
+    }
+    if(--e.atimer<=0){ e.astate='recover'; e.atimer=26; }
+  } else if(e.astate==='recover'){
+    if(--e.atimer<=0) e.astate='chase';          // cooldown after the swing
+  } else {                                        // chase
+    moveColliding(e, Math.cos(a)*e.speed, Math.sin(a)*e.speed);
+    if(tp && dist <= reach){ e.astate='windup'; e.atimer=16; }
+  }
+}
+
+// ---- Charger: roam to medium range → wind-up (telegraph) → straight-line dash.
+//      Hit = heavy damage; miss/overshoot/wall = stunned ~1s. ----
+function updateCharger(e, tp, a, dist){
+  const DETECT=420, MAXDIST=560;
+  if(e.cstate==='windup'){
+    e.faceAng=a;                                  // tracks the player while charging up
+    if(--e.ctimer<=0){ e.cstate='charge'; e.cdx=Math.cos(a); e.cdy=Math.sin(a); e.chargeDist=0; e.struck=false; if(tp&&tp.isLocal) sfx('shoot'); }
+  } else if(e.cstate==='charge'){
+    const cs=e.speed*4.2;
+    const px=e.x, py=e.y;
+    moveColliding(e, e.cdx*cs, e.cdy*cs);
+    const moved=Math.hypot(e.x-px,e.y-py);
+    e.chargeDist+=moved;
+    if(!e.struck && tp && dist < e.r+tp.r+4){     // slam into the player
+      if(damagePlayer(tp, e.dmg)){ if(tp.isLocal){ sfx('hurt'); haptic(120); addShake(0.9); } tp.invuln=Math.max(tp.invuln||0,20); }
+      e.struck=true; e.cstate='stunned'; e.ctimer=60;
+    } else if(e.chargeDist>=MAXDIST || moved < cs*0.4){
+      e.cstate='stunned'; e.ctimer=60;            // overshot or hit a wall → stunned 1s
+    }
+  } else if(e.cstate==='stunned'){
+    if(--e.ctimer<=0) e.cstate='roam';
+  } else {                                         // roam — approach to medium range, then wind up
+    e.faceAng=a;
+    moveColliding(e, Math.cos(a)*e.speed, Math.sin(a)*e.speed);
+    if(tp && dist <= DETECT && dist > e.r+tp.r+20){ e.cstate='windup'; e.ctimer=48+Math.floor(Math.random()*24); }
+  }
+}
+
 // ---- Weapon types (picked up on the field) ----
 // fireRate lower = faster; dmg = damage per bullet; spread = extra bullets; bulletColor for flavor
 const WEAPONS={
@@ -698,6 +844,7 @@ function effectiveWeapon(key){
 
 let level, boss, bossSpawned, state;
 let enemies=[], bullets=[], eBullets=[], particles=[], pickups=[];
+let enemiesPending=0;  // remaining enemies to trickle in this level (simultaneous cap system)
 
 // ---- Players (1 in single-player; several in online co-op) ----
 let players=[];        // every player in the simulation
@@ -987,7 +1134,7 @@ function renderChars(){
 
 // ---- Game Modes panel ----
 const GAME_MODES=[
-  { id:'survival', icon:'⚔', name:'SURVIVAL',     desc:'20 levels · 4 bosses · Classic run', levels:20, sel:true  },
+  { id:'survival', icon:'⚔', name:'SURVIVAL',     desc:'50 levels · 10 bosses · 6 enemy types', levels:50, sel:true  },
   { id:'arcade',   icon:'⚡', name:'ARCADE',       desc:'Coming soon',                         levels:null,sel:false },
   { id:'endless',  icon:'♾', name:'ENDLESS',      desc:'Coming soon',                         levels:null,sel:false },
   { id:'coop',     icon:'👥', name:'CO-OP ONLINE', desc:'Coming soon',                         levels:null,sel:false },
@@ -1226,27 +1373,12 @@ function startLevel(idx, fresh){
     p.y=MAP_H/2+Math.sin(ang)*(players.length>1?60:0);
     if(!p.out){ p.hp=p.maxHp; p.invuln=60; }
   });
-  const cX=MAP_W/2, cY=MAP_H/2;
-  for(let i=0;i<cfg.enemies;i++){
-    // spawn enemies in a tight ring near the players (close), not scattered across the whole map
-    const ang=Math.random()*Math.PI*2;
-    const dist=320+Math.random()*420; // 320..740 from centre
-    let x=cX+Math.cos(ang)*dist, y=cY+Math.sin(ang)*dist;
-    x=Math.max(60,Math.min(MAP_W-60,x));
-    y=Math.max(60,Math.min(MAP_H-60,y));
-    const melee = Math.random() < 0.45; // ~45% melee rushers, rest are ranged kiters
-    if(melee){
-      // melee: no ranged attack, faster, tougher — rushes in to deal contact damage
-      const mhp=(cfg.ehp+1)*2; // double health
-      enemies.push({x,y,r:14,hp:mhp,maxHp:mhp,speed:cfg.espeed*1.55,shoot:0,
-                    boss:false,melee:true,fireCD:0});
-    } else {
-      // ranged: keeps its distance and shoots
-      const rhp=cfg.ehp*2; // double health
-      enemies.push({x,y,r:13,hp:rhp,maxHp:rhp,speed:cfg.espeed,shoot:cfg.eShoot,
-                    boss:false,melee:false,strafe:(Math.random()<0.5?1:-1),fireCD:Math.random()*100});
-    }
-  }
+  // spawn up to the simultaneous cap now; the rest trickle in as enemies die
+  const total=cfg.enemies;
+  const cap=levelMaxAlive(idx+1);
+  const initial=Math.min(total, cap);
+  for(let i=0;i<initial;i++) spawnEnemyAt();
+  enemiesPending=total-initial;
   // health pickups
   const hCount = 1; // health pickups halved per round
   for(let i=0;i<hCount;i++){
@@ -1271,8 +1403,8 @@ function spawnPickup(kind, weapon){
   return {x,y,r,kind,weapon,bob:Math.random()*Math.PI*2};
 }
 
-// bosses only appear on levels 5, 10, 15 and 20 (indices 4, 9, 14, 19)
-function levelHasBoss(idx){ return idx===4 || idx===9 || idx===14 || idx===19; }
+// a boss caps every 5th level (levels 5,10,...,50 → indices 4,9,...,49)
+function levelHasBoss(idx){ return (idx+1)%5===0 && !!(LEVELS[idx] && LEVELS[idx].boss); }
 function spawnBoss(){
   const b=LEVELS[level].boss;
   const ref=alivePlayers()[0]||{x:MAP_W/2,y:MAP_H/2};
@@ -1540,9 +1672,10 @@ function update(){
           }
           e.fireCD=e.fireRate;
         }
-      } else if(e.melee){
-        // melee rusher: charge straight at the player (contact damage only)
-        moveColliding(e, Math.cos(a)*e.speed, Math.sin(a)*e.speed);
+      } else if(e.kind==='charger'){
+        updateCharger(e, tp, a, dist);
+      } else if(e.kind==='melee' || e.melee){
+        updateMeleeEnemy(e, tp, a, dist);
       } else {
         // ranged: only retreat when the player gets VERY close, otherwise tend to close in
         const R=attackRange();
@@ -1552,6 +1685,7 @@ function update(){
         } else {
           moveColliding(e, Math.cos(a)*e.speed, Math.sin(a)*e.speed);   // otherwise approach the player
         }
+        e.faceAng=a;
         e.fireCD--;
         // only attack when the player is within the SAME range the player can hit it
         if(dist<=R && Math.random()<e.shoot && e.fireCD<=0){
@@ -1562,15 +1696,22 @@ function update(){
       // keep enemies inside the arena (kiters can back into the edge)
       e.x=Math.max(e.r,Math.min(MAP_W-e.r,e.x));
       e.y=Math.max(e.r,Math.min(MAP_H-e.r,e.y));
-      // touch damage to the targeted player (melee rushers hit harder)
-      if(tp && dist<e.r+tp.r){ damagePlayer(tp, e.boss?0.5 : (e.melee?0.5:0.2)); }
-      // death
+      // contact graze: boss & ranged hurt on touch; melee/charger deal damage via their attacks
+      if(tp && dist<e.r+tp.r){
+        if(e.boss) damagePlayer(tp,0.5);
+        else if(e.kind==='ranged') damagePlayer(tp,0.18);
+      }
+      // death + rewards
       if(e.hp<=0){
-        spawnParticles(e.x,e.y,e.boss?e.color:'#caa3ff',e.boss?40:14);
+        const eliteCol = e.elite ? '#ffe27a' : '#caa3ff';
+        spawnParticles(e.x,e.y, e.boss?e.color:eliteCol, e.boss?40:(e.elite?22:14));
         enemies.splice(i,1);
         sfx('enemyDie');
         if(e.boss){ addScore(1000+level*250); boss=null; bossSpawned=false; bossWrap.classList.remove('show'); addShake(0.6); haptic([40,30,40]); levelClear(); }
-        else { addScore(100); }
+        else {
+          addScore(e.score||100);
+          if(e.coin){ money+=e.coin; saveMoney(); updateMenuHiscore(); if(e.elite) showToast('+'+e.coin+' ORO'); }
+        }
       }
     }
 
@@ -1609,10 +1750,20 @@ function update(){
       if(taken) pickups.splice(i,1);
     }
 
-    // all minions dead: spawn the boss (boss levels) or clear the level (others)
-    if(!bossSpawned && enemies.filter(e=>!e.boss).length===0){
-      if(levelHasBoss(level)) spawnBoss();
-      else levelClear();
+    // trickle reinforcements in until the simultaneous cap, then handle level end
+    if(!bossSpawned){
+      const aliveMinions=enemies.filter(e=>!e.boss).length;
+      if(enemiesPending>0){
+        const cap=levelMaxAlive(level+1);
+        let guard=4;                                  // at most 4 spawns per frame (smooth)
+        while(enemiesPending>0 && enemies.filter(e=>!e.boss).length<cap && guard-->0){
+          spawnEnemyAt(); enemiesPending--;
+        }
+      } else if(aliveMinions===0){
+        // all minions defeated: spawn the boss (boss levels) or clear the level
+        if(levelHasBoss(level)) spawnBoss();
+        else levelClear();
+      }
     }
 
     // ---- Deaths / respawns (per player) ----
@@ -1982,63 +2133,139 @@ function render(){
 function drawAlien(e){
   const x=e.x-cam.x, y=e.y-cam.y, r=e.r;
   const wob=Math.sin(e.wob)*1.5;
-  const melee = e.melee;
-  // ranged = alien violet; melee = aggressive red/orange (no green — Mars theme)
-  const cGlow = melee ? '#ff6a3a' : '#b06af0';
-  const cLeg  = melee ? '#b83a22' : '#6a36a8';
-  const cBody = melee ? '#e8463a' : '#9b5ad1';
-  const cSheen= melee ? '#ff7a5a' : '#b884ea';
-  const cPup  = melee ? '#ffd24d' : '#e0c0ff';
+  const kind=e.kind || (e.melee?'melee':'ranged');
+  const elite=!!e.elite;
+  const fa=e.faceAng||0;
   ctx.save();
   ctx.translate(x,y);
-
-  // outer glow
-  ctx.globalAlpha=0.2; ctx.fillStyle=cGlow;
-  ctx.beginPath(); ctx.arc(0,0,r+6,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1;
-
-  if(melee){
-    // aggressive spikes around the body
-    ctx.fillStyle=cLeg;
-    for(let i=0;i<6;i++){
-      const ang=(i/6)*Math.PI*2 + Math.sin(e.wob+i)*0.1;
-      const bx=Math.cos(ang)*r*0.7, by=Math.sin(ang)*r*0.7;
-      const ex=Math.cos(ang)*(r*1.35), ey=Math.sin(ang)*(r*1.35);
-      const px=Math.cos(ang+1.57)*r*0.22, py=Math.sin(ang+1.57)*r*0.22;
-      ctx.beginPath(); ctx.moveTo(bx-px,by-py); ctx.lineTo(ex,ey); ctx.lineTo(bx+px,by+py); ctx.closePath(); ctx.fill();
-    }
-  } else {
-    // wiggling tentacle legs
-    ctx.strokeStyle=cLeg; ctx.lineWidth=3; ctx.lineCap='round';
-    for(let i=-1;i<=1;i++){
-      ctx.beginPath();
-      ctx.moveTo(i*r*0.45, r*0.4);
-      ctx.quadraticCurveTo(i*r*0.6+wob, r*0.9, i*r*0.5-wob, r*1.25);
-      ctx.stroke();
-    }
+  // Elite aura: pulsing golden ring behind the body
+  if(elite){
+    const pr=r+7+Math.sin(e.wob*1.6)*2.2;
+    ctx.globalAlpha=0.55; ctx.strokeStyle='#ffe27a'; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.arc(0,0,pr,0,Math.PI*2); ctx.stroke();
+    ctx.globalAlpha=0.15; ctx.fillStyle='#ffd24d';
+    ctx.beginPath(); ctx.arc(0,0,pr,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha=1;
   }
-
-  // head/body (teardrop bulb)
+  if(kind==='charger')      drawChargerBody(e, r, wob, elite, fa);
+  else if(kind==='melee')   drawMeleeBody(e, r, wob, elite, fa);
+  else                      drawRangedBody(e, r, wob, elite);
+  ctx.restore();
+}
+// small crown marker above Elite enemies
+function drawEliteCrown(r){
+  ctx.fillStyle='#ffd24d';
+  const cy=-r*1.3, s=r*0.32;
+  ctx.beginPath();
+  ctx.moveTo(-s,cy); ctx.lineTo(-s*0.5,cy-s*0.95); ctx.lineTo(0,cy);
+  ctx.lineTo(s*0.5,cy-s*0.95); ctx.lineTo(s,cy);
+  ctx.lineTo(s*0.7,cy+s*0.5); ctx.lineTo(-s*0.7,cy+s*0.5); ctx.closePath(); ctx.fill();
+}
+// MELEE — red spiky alien with a wind-up / strike lunge animation
+function drawMeleeBody(e, r, wob, elite, fa){
+  const cGlow=elite?'#ff9a4a':'#ff6a3a', cLeg=elite?'#a01828':'#b83a22';
+  const cBody=elite?'#ff2d4d':'#e8463a', cSheen=elite?'#ff8a6a':'#ff7a5a';
+  let lunge=0, flash=0;
+  if(e.astate==='windup') lunge=-3*(1-(e.atimer/16));            // rear back
+  else if(e.astate==='strike'){ lunge=9*(e.atimer/7); flash=e.atimer/7; } // thrust + flash
+  ctx.save();
+  if(lunge) ctx.translate(Math.cos(fa)*lunge, Math.sin(fa)*lunge);
+  const glowA = e.astate==='windup' ? 0.2+0.3*(1-e.atimer/16) : 0.2;  // glow grows during wind-up
+  ctx.globalAlpha=glowA; ctx.fillStyle=cGlow;
+  ctx.beginPath(); ctx.arc(0,0,r+6,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1;
+  ctx.fillStyle=cLeg;
+  for(let i=0;i<6;i++){
+    const ang=(i/6)*Math.PI*2 + Math.sin(e.wob+i)*0.1;
+    const bx=Math.cos(ang)*r*0.7, by=Math.sin(ang)*r*0.7;
+    const ex=Math.cos(ang)*(r*1.35), ey=Math.sin(ang)*(r*1.35);
+    const px=Math.cos(ang+1.57)*r*0.22, py=Math.sin(ang+1.57)*r*0.22;
+    ctx.beginPath(); ctx.moveTo(bx-px,by-py); ctx.lineTo(ex,ey); ctx.lineTo(bx+px,by+py); ctx.closePath(); ctx.fill();
+  }
   ctx.fillStyle=cBody;
   ctx.beginPath(); ctx.ellipse(0,-r*0.1,r*0.85,r,0,0,Math.PI*2); ctx.fill();
   ctx.fillStyle=cSheen;
-  ctx.beginPath(); ctx.ellipse(-r*0.2,-r*0.3,r*0.4,r*0.5,0,0,Math.PI*2); ctx.fill(); // sheen
-
-  // big eye
+  ctx.beginPath(); ctx.ellipse(-r*0.2,-r*0.3,r*0.4,r*0.5,0,0,Math.PI*2); ctx.fill();
   ctx.fillStyle='#0b0d18';
   ctx.beginPath(); ctx.ellipse(0,-r*0.15,r*0.5,r*0.62,0,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle= melee ? '#ffe0c0' : '#caffd0';
+  ctx.fillStyle='#ffe0c0';
   ctx.beginPath(); ctx.arc(-r*0.15,-r*0.35,r*0.16,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle=cPup;
+  ctx.fillStyle='#ffd24d';
   ctx.beginPath(); ctx.ellipse(r*0.05,-r*0.1,r*0.08,r*0.28,0,0,Math.PI*2); ctx.fill();
-
-  if(melee){
-    // angry fangs
-    ctx.fillStyle='#fff';
-    ctx.beginPath(); ctx.moveTo(-r*0.2,r*0.35); ctx.lineTo(-r*0.1,r*0.62); ctx.lineTo(0,r*0.35); ctx.closePath(); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(r*0.2,r*0.35); ctx.lineTo(r*0.1,r*0.62); ctx.lineTo(0,r*0.35); ctx.closePath(); ctx.fill();
-  }
-
+  ctx.fillStyle='#fff';
+  ctx.beginPath(); ctx.moveTo(-r*0.2,r*0.35); ctx.lineTo(-r*0.1,r*0.62); ctx.lineTo(0,r*0.35); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(r*0.2,r*0.35); ctx.lineTo(r*0.1,r*0.62); ctx.lineTo(0,r*0.35); ctx.closePath(); ctx.fill();
+  if(flash>0){ ctx.globalAlpha=flash*0.7; ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(0,0,r*1.1,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1; }
   ctx.restore();
+  if(elite) drawEliteCrown(r);
+}
+// RANGED — violet tentacled alien
+function drawRangedBody(e, r, wob, elite){
+  const cGlow=elite?'#7c5aff':'#b06af0', cLeg=elite?'#4a2a9a':'#6a36a8';
+  const cBody=elite?'#c77cff':'#9b5ad1', cSheen=elite?'#dca6ff':'#b884ea';
+  ctx.globalAlpha=0.2; ctx.fillStyle=cGlow;
+  ctx.beginPath(); ctx.arc(0,0,r+6,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1;
+  ctx.strokeStyle=cLeg; ctx.lineWidth=3; ctx.lineCap='round';
+  for(let i=-1;i<=1;i++){
+    ctx.beginPath(); ctx.moveTo(i*r*0.45, r*0.4);
+    ctx.quadraticCurveTo(i*r*0.6+wob, r*0.9, i*r*0.5-wob, r*1.25); ctx.stroke();
+  }
+  ctx.fillStyle=cBody;
+  ctx.beginPath(); ctx.ellipse(0,-r*0.1,r*0.85,r,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle=cSheen;
+  ctx.beginPath(); ctx.ellipse(-r*0.2,-r*0.3,r*0.4,r*0.5,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#0b0d18';
+  ctx.beginPath(); ctx.ellipse(0,-r*0.15,r*0.5,r*0.62,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle=elite?'#aef0ff':'#caffd0';
+  ctx.beginPath(); ctx.arc(-r*0.15,-r*0.35,r*0.16,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#e0c0ff';
+  ctx.beginPath(); ctx.ellipse(r*0.05,-r*0.1,r*0.08,r*0.28,0,0,Math.PI*2); ctx.fill();
+  if(elite) drawEliteCrown(r);
+}
+// CHARGER — armored amber bull that telegraphs and dashes
+function drawChargerBody(e, r, wob, elite, fa){
+  const cGlow=elite?'#fff1a0':'#ffb13a', cBody=elite?'#ffd24d':'#ffae42';
+  const cDark=elite?'#c98a1c':'#b8721c', cHorn=elite?'#fff7e0':'#ffe6b0';
+  const st=e.cstate||'roam';
+  if(st==='windup'){
+    // telegraph: flashing aura + a beam pointing where it will charge
+    const t=1-(e.ctimer/72), flash=0.4+0.4*Math.abs(Math.sin(e.ctimer*0.5));
+    ctx.save(); ctx.rotate(fa);
+    const beamLen=r*2.2 + t*r*2.6;
+    const g=ctx.createLinearGradient(0,0,beamLen,0);
+    g.addColorStop(0,'rgba(255,80,40,'+(0.5*flash)+')'); g.addColorStop(1,'rgba(255,80,40,0)');
+    ctx.fillStyle=g;
+    ctx.beginPath(); ctx.moveTo(r*0.6,-r*0.42); ctx.lineTo(beamLen,-r*0.16); ctx.lineTo(beamLen,r*0.16); ctx.lineTo(r*0.6,r*0.42); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    ctx.globalAlpha=0.25*flash; ctx.fillStyle='#ff5a2a';
+    ctx.beginPath(); ctx.arc(0,0,r+8,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1;
+  } else if(st==='charge'){
+    ctx.save(); ctx.rotate(fa);
+    ctx.strokeStyle='rgba(255,200,120,0.6)'; ctx.lineWidth=2;
+    for(let i=-1;i<=1;i++){ ctx.beginPath(); ctx.moveTo(-r*0.6, i*r*0.4); ctx.lineTo(-r*1.8-Math.random()*r, i*r*0.4); ctx.stroke(); }
+    ctx.restore();
+  }
+  ctx.globalAlpha=0.22; ctx.fillStyle=cGlow;
+  ctx.beginPath(); ctx.arc(0,0,r+5,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1;
+  ctx.save(); ctx.rotate(fa);                 // body faces its charge/aim direction
+  ctx.fillStyle=cBody;
+  ctx.beginPath(); ctx.ellipse(0,0,r*1.05,r*0.85,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle=cDark;
+  ctx.beginPath(); ctx.ellipse(r*0.4,0,r*0.55,r*0.7,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle=cHorn;
+  ctx.beginPath(); ctx.moveTo(r*0.7,-r*0.55); ctx.lineTo(r*1.5,-r*0.35); ctx.lineTo(r*0.8,-r*0.2); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(r*0.7, r*0.55); ctx.lineTo(r*1.5, r*0.35); ctx.lineTo(r*0.8, r*0.2); ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#0b0d18';
+  ctx.beginPath(); ctx.arc(r*0.2,-r*0.28,r*0.16,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(r*0.2, r*0.28,r*0.16,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = st==='stunned' ? '#ffd24d' : '#ff3b1a';
+  ctx.beginPath(); ctx.arc(r*0.26,-r*0.28,r*0.07,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(r*0.26, r*0.28,r*0.07,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+  if(st==='stunned'){                          // dizzy stars while stunned
+    const sp=performance.now()/200; ctx.fillStyle='#ffe27a';
+    for(let i=0;i<3;i++){ const a=sp+i*(Math.PI*2/3); ctx.beginPath(); ctx.arc(Math.cos(a)*r*0.8, -r*1.2+Math.sin(a)*r*0.25, r*0.12,0,Math.PI*2); ctx.fill(); }
+  }
+  if(elite) drawEliteCrown(r);
 }
 
 // ---- Boss skins: each boss has a distinct look (dispatched by e.skin) ----
@@ -2821,7 +3048,7 @@ function buildSnapshot(){
     bn:boss?boss.name:'', bhp:boss?boss.hp:0, bmax:boss?boss.maxHp:0,
     ec:enemies.filter(e=>!e.boss).length,
     ps:players.map(p=>({id:p.id,n:p.name,c:p.color,ch:p.char,x:Math.round(p.x),y:Math.round(p.y),a:+p.aim.toFixed(2),hp:Math.round(p.hp),mh:p.maxHp,sh:Math.round(p.shield||0),msh:p.maxShield||100,lv:p.lives,w:p.weapon,fl:p.flash,iv:p.invuln>0?1:0,o:p.out?1:0})),
-    es:enemies.map(e=>({x:Math.round(e.x),y:Math.round(e.y),r:e.r,b:e.boss?1:0,c:e.color||'',hp:e.hp,mh:e.maxHp,sk:e.skin,m:e.melee?1:0})),
+    es:enemies.map(e=>({x:Math.round(e.x),y:Math.round(e.y),r:e.r,b:e.boss?1:0,c:e.color||'',hp:e.hp,mh:e.maxHp,sk:e.skin,m:e.melee?1:0,k:e.kind||'',el:e.elite?1:0,fa:e.faceAng||0,as:e.astate||'',cs:e.cstate||''})),
     bs:bullets.map(b=>({x:Math.round(b.x),y:Math.round(b.y),c:b.color})),
     eb:eBullets.map(b=>({x:Math.round(b.x),y:Math.round(b.y),c:b.color})),
     pk:pickups.map(p=>({x:Math.round(p.x),y:Math.round(p.y),k:p.kind,w:p.weapon}))
@@ -2829,7 +3056,7 @@ function buildSnapshot(){
 }
 function applySnapshot(s){
   level=s.lvl; score=s.score; bossSpawned=s.bossSpawned;
-  enemies=s.es.map(e=>({x:e.x,y:e.y,r:e.r,boss:!!e.b,color:e.c,hp:e.hp,maxHp:e.mh,skin:e.sk,melee:!!e.m}));
+  enemies=s.es.map(e=>({x:e.x,y:e.y,r:e.r,boss:!!e.b,color:e.c,hp:e.hp,maxHp:e.mh,skin:e.sk,melee:!!e.m,kind:e.k||(e.m?'melee':'ranged'),elite:!!e.el,faceAng:e.fa||0,astate:e.as||'chase',cstate:e.cs||'roam'}));
   bullets=s.bs.map(b=>({x:b.x,y:b.y,r:5,color:b.c}));
   eBullets=s.eb.map(b=>({x:b.x,y:b.y,r:5,color:b.c}));
   pickups=s.pk.map(p=>({x:p.x,y:p.y,r:16,kind:p.k,weapon:p.w,bob:0}));
