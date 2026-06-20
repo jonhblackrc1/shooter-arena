@@ -59,7 +59,7 @@
   .setlabel { color:#e8e6f5; font-size:16px; }
   .settoggle { min-width:66px; padding:8px 16px; border-radius:20px; border:2px solid #6a5a8c; background:transparent; color:#9b94c4; font-weight:bold; font-size:14px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
   .settoggle.on { background:linear-gradient(135deg,#5aff8a,#42c8ff); color:#0b0d18; border-color:transparent; }
-  #charGrid { display:grid; grid-template-columns:1fr 1fr; gap:12px; width:min(90vw,360px); margin:12px 0; }
+  #charGrid { display:grid; grid-template-columns:1fr 1fr; gap:12px; width:100%; margin:4px 0; }
   .charcard { background:rgba(120,160,90,0.07); border:2px solid rgba(120,160,90,0.25); border-radius:14px; padding:16px 8px; text-align:center; cursor:pointer; -webkit-tap-highlight-color:transparent; }
   .charcard:active { transform:scale(0.96); }
   .charcard.sel { border-color:#5aff8a; background:rgba(90,255,138,0.12); box-shadow:0 0 16px rgba(90,255,138,0.25); }
@@ -110,15 +110,53 @@
   .bossfill { height:100%; background:linear-gradient(90deg,#b07cff,#ff5a7a); transition:width .12s; }
   #endmsg { font-size:clamp(30px,9vw,66px); }
   .credit { margin-top:18px; font-size:clamp(16px,4.5vw,24px); color:#f5d77a; letter-spacing:5px; font-weight:bold; }
-  /* ============ MODERN SWIPEABLE MENU ============ */
-  #startScreen { justify-content:flex-start; padding:0; }
-  .menuShell {
-    width:min(94vw,420px); margin:auto; display:flex; flex-direction:column;
-    align-items:center; padding:calc(env(safe-area-inset-top,0px) + 14px) 0 16px;
+  /* ============ MODERN MENU (flex-fills the screen, always fits) ============ */
+  #startScreen {
+    justify-content:stretch; align-items:stretch; padding:0; overflow:hidden;
+    background:radial-gradient(circle at 50% 28%, rgba(120,70,180,0.22), rgba(12,5,18,0.99));
   }
-  .menuTitle { font-size:clamp(30px,9vw,58px); letter-spacing:3px; line-height:0.95; }
+  /* animated aurora glow behind the menu */
+  #startScreen::before {
+    content:''; position:absolute; inset:-25%; z-index:0; pointer-events:none;
+    background:
+      radial-gradient(38% 32% at 24% 18%, rgba(245,215,122,0.16), transparent 70%),
+      radial-gradient(44% 38% at 80% 28%, rgba(176,124,255,0.22), transparent 70%),
+      radial-gradient(50% 46% at 50% 92%, rgba(90,200,255,0.13), transparent 70%);
+    filter:blur(26px); animation:auroraDrift 16s ease-in-out infinite alternate;
+  }
+  @keyframes auroraDrift {
+    0%   { transform:translate3d(-3%,-2%,0) scale(1);   }
+    100% { transform:translate3d(3%,4%,0)  scale(1.12); }
+  }
+  .menuShell {
+    position:relative; z-index:1; width:min(94vw,440px); height:100dvh; margin:0 auto;
+    display:flex; flex-direction:column; align-items:stretch; gap:12px;
+    padding:calc(env(safe-area-inset-top,0px) + 16px) 0 calc(env(safe-area-inset-bottom,0px) + 12px);
+    animation:shellIn .45s cubic-bezier(.2,.7,.3,1) both;
+  }
+  @keyframes shellIn { from { opacity:0; transform:translateY(14px) scale(.98); } to { opacity:1; transform:none; } }
+  /* header */
+  .menuHead { flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:10px; }
+  .menuTitle {
+    font-size:clamp(26px,7.6vh,52px); letter-spacing:3px; line-height:0.9; margin:0;
+    animation:titleGlow 3.6s ease-in-out infinite;
+  }
+  @keyframes titleGlow {
+    0%,100% { filter:drop-shadow(0 0 12px rgba(176,124,255,0.35)); }
+    50%     { filter:drop-shadow(0 0 22px rgba(245,215,122,0.55)); }
+  }
+  /* fullscreen toggle (top-right) */
+  .fsBtn {
+    position:absolute; top:calc(env(safe-area-inset-top,0px) + 12px); right:14px; z-index:4;
+    width:42px; height:42px; border-radius:12px; padding:0; line-height:1;
+    background:rgba(255,255,255,0.06); border:1px solid rgba(176,124,255,0.4);
+    color:#e8e6f5; font-size:19px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); -webkit-tap-highlight-color:transparent;
+    transition:transform .15s, background .2s;
+  }
+  .fsBtn:active { transform:scale(0.88); background:rgba(176,124,255,0.25); }
   /* stat pills */
-  .statRow { display:flex; gap:10px; margin-top:12px; }
+  .statRow { display:flex; gap:10px; }
   .statPill {
     display:flex; align-items:center; gap:6px; padding:7px 16px; border-radius:30px;
     background:rgba(255,255,255,0.05); border:1px solid rgba(176,124,255,0.35);
@@ -129,7 +167,7 @@
   .statPill.gold { border-color:rgba(255,210,77,0.5); color:#ffd24d; }
   .statIco { font-size:15px; }
   /* tab bar */
-  .menuTabBar { display:flex; gap:6px; width:100%; margin:16px 0 0; flex-shrink:0; }
+  .menuTabBar { display:flex; gap:6px; width:100%; flex-shrink:0; }
   .menuTab {
     flex:1; padding:9px 2px; border:1px solid rgba(176,124,255,0.18); border-radius:16px;
     background:rgba(255,255,255,0.03); color:#9b94c4; font-size:10px; font-weight:bold;
@@ -143,26 +181,51 @@
     color:#f5d77a; border-color:rgba(245,215,122,0.55);
     box-shadow:0 4px 18px rgba(176,124,255,0.25);
   }
-  .menuTab.active .tabIco { filter:none; transform:scale(1.12); }
+  .menuTab.active .tabIco { filter:none; transform:scale(1.15) translateY(-1px); }
   .menuTab.active::after {
-    content:''; position:absolute; bottom:0; left:25%; right:25%; height:2.5px;
+    content:''; position:absolute; bottom:0; left:22%; right:22%; height:2.5px;
     background:linear-gradient(90deg,#f5d77a,#caa3ff); border-radius:2px;
+    animation:tabBar .3s ease both;
   }
-  .menuSliderWrap { width:100%; overflow:hidden; flex-shrink:0; margin-top:14px;
-    border-radius:18px; }
-  .menuSlider { display:flex; will-change:transform; transition:transform .3s cubic-bezier(.4,0,.2,1); }
+  @keyframes tabBar { from { transform:scaleX(0); } to { transform:scaleX(1); } }
+  /* slider fills the remaining height; panes scroll internally so the menu never overflows */
+  .menuSliderWrap { width:100%; flex:1 1 auto; min-height:0; overflow:hidden; border-radius:18px; }
+  .menuSlider { display:flex; height:100%; will-change:transform; transition:transform .32s cubic-bezier(.4,0,.2,1); }
   .menuPane {
-    min-width:min(94vw,420px); width:min(94vw,420px); height:54vh; max-height:520px;
-    overflow-y:auto; box-sizing:border-box; padding:4px;
+    min-width:100%; width:100%; height:100%; overflow-y:auto; box-sizing:border-box; padding:4px 4px 10px;
     scrollbar-width:thin; scrollbar-color:rgba(176,124,255,0.4) transparent;
   }
   .menuPane::-webkit-scrollbar { width:5px; }
   .menuPane::-webkit-scrollbar-thumb { background:rgba(176,124,255,0.4); border-radius:3px; }
   #paneModes { display:flex; flex-direction:column; }
+  /* staggered entrance for whatever cards a pane renders */
+  @keyframes cardIn { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+  .charcard, .wcard, .modeCard, #paneRanking .board .row {
+    animation:cardIn .4s cubic-bezier(.2,.7,.3,1) both;
+  }
+  .charcard:nth-child(2){animation-delay:.05s} .charcard:nth-child(3){animation-delay:.1s} .charcard:nth-child(4){animation-delay:.15s}
+  .wcard:nth-child(2){animation-delay:.05s} .wcard:nth-child(3){animation-delay:.1s} .wcard:nth-child(4){animation-delay:.15s}
+  .wcard:nth-child(5){animation-delay:.2s} .wcard:nth-child(6){animation-delay:.25s} .wcard:nth-child(7){animation-delay:.3s}
+  .modeCard:nth-child(2){animation-delay:.06s} .modeCard:nth-child(3){animation-delay:.12s} .modeCard:nth-child(4){animation-delay:.18s}
+  #paneRanking .board .row:nth-child(2){animation-delay:.05s} #paneRanking .board .row:nth-child(3){animation-delay:.1s}
+  #paneRanking .board .row:nth-child(4){animation-delay:.15s} #paneRanking .board .row:nth-child(5){animation-delay:.2s}
   .menuPlayBtn {
     margin-top:auto; position:sticky; bottom:0; width:100%; padding:17px; font-size:22px;
-    letter-spacing:3px; border-radius:18px; box-shadow:0 -2px 20px rgba(11,13,24,0.9),0 0 28px rgba(202,163,255,0.55);
+    letter-spacing:3px; border-radius:18px; overflow:hidden;
+    box-shadow:0 -2px 20px rgba(11,13,24,0.9),0 0 28px rgba(202,163,255,0.55);
+    animation:playPulse 2.2s ease-in-out infinite;
   }
+  @keyframes playPulse {
+    0%,100% { box-shadow:0 -2px 20px rgba(11,13,24,0.9),0 0 22px rgba(202,163,255,0.45); }
+    50%     { box-shadow:0 -2px 20px rgba(11,13,24,0.9),0 0 40px rgba(245,215,122,0.75); }
+  }
+  /* moving shine sweep across PLAY */
+  .menuPlayBtn::after {
+    content:''; position:absolute; top:0; left:-60%; width:45%; height:100%;
+    background:linear-gradient(100deg,transparent,rgba(255,255,255,0.55),transparent);
+    transform:skewX(-20deg); animation:shine 2.8s ease-in-out infinite;
+  }
+  @keyframes shine { 0%{left:-60%} 55%{left:130%} 100%{left:130%} }
   .menuPlayBtn:active { transform:scale(0.97); }
   /* ranking pane */
   #paneRanking .board { width:100%; margin-top:0; font-size:15px; }
@@ -180,7 +243,7 @@
     display:flex; align-items:center; gap:12px;
     background:rgba(255,255,255,0.04); border:1px solid rgba(176,124,255,0.18);
     border-radius:16px; padding:14px; margin-bottom:10px; cursor:pointer;
-    -webkit-tap-highlight-color:transparent; transition:all .18s;
+    -webkit-tap-highlight-color:transparent; transition:transform .18s, box-shadow .2s, border-color .2s;
   }
   .modeCard:not(.locked):active { transform:scale(0.98); }
   .modeCard.locked { opacity:0.4; cursor:default; }
@@ -189,20 +252,12 @@
   .modeIcon { font-size:34px; line-height:1; flex-shrink:0; }
   .modeName { color:#f5d77a; font-weight:bold; font-size:15px; letter-spacing:1px; }
   .modeDesc { font-size:12px; color:#9b94c4; margin-top:2px; line-height:1.5; }
-  /* ---- Responsive: keep the whole menu on screen on short / landscape viewports ---- */
-  @media (max-height:640px){
-    .menuShell { padding-top:calc(env(safe-area-inset-top,0px) + 6px); }
-    .menuTitle { font-size:clamp(22px,7vh,40px); }
-    .statRow { margin-top:7px; }
-    .menuTabBar { margin-top:9px; }
-    .menuSliderWrap { margin-top:9px; }
-    .menuPane { height:auto; max-height:46vh; }
-  }
+  /* landscape: drop the title to one line so the flex menu stays comfortable */
   @media (max-height:430px){
-    .menuTitle br { display:none; }              /* single-line title in landscape */
-    .menuTitle { font-size:clamp(20px,9vw,34px); }
-    .menuPane { max-height:40vh; }
-    .menuPlayBtn { padding:12px; font-size:18px; }
+    .menuTitle br { display:none; }
+    .menuTitle { font-size:clamp(20px,8vw,32px); letter-spacing:2px; }
+    .menuShell { gap:8px; padding-top:calc(env(safe-area-inset-top,0px) + 8px); }
+    .menuPlayBtn { padding:13px; font-size:18px; }
   }
 </style>
 </head>
@@ -231,12 +286,15 @@
 </div>
 
 <div class="overlay" id="startScreen">
+  <button class="fsBtn" id="fsBtn" aria-label="Pantalla completa">⛶</button>
   <div class="menuShell">
     <!-- ── Header ── -->
-    <div class="title menuTitle">SHOOTER<br>ARENA</div>
-    <div class="statRow">
-      <div class="statPill"><span class="statIco">🏆</span><span id="hiscoreMenu">0</span></div>
-      <div class="statPill gold"><span class="statIco">🪙</span><span id="coinsMenu">0</span></div>
+    <div class="menuHead">
+      <div class="title menuTitle">SHOOTER<br>ARENA</div>
+      <div class="statRow">
+        <div class="statPill"><span class="statIco">🏆</span><span id="hiscoreMenu">0</span></div>
+        <div class="statPill gold"><span class="statIco">🪙</span><span id="coinsMenu">0</span></div>
+      </div>
     </div>
 
     <!-- ── Tab bar ── -->
@@ -396,7 +454,7 @@ if(!CanvasRenderingContext2D.prototype.roundRect){
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 let W, H, DPR;
-let ZOOM=0.8;           // zoomed out a bit (0.976 -> 0.8) → camera slightly farther
+let ZOOM=0.7;           // zoomed out a bit more (0.8 -> 0.7) → wider view for portrait
 let VW=0, VH=0;         // visible world size = screen / zoom
 function resize(){
   DPR = Math.min(window.devicePixelRatio||1, 2);
@@ -428,6 +486,17 @@ function goFullscreen(){
   // best-effort portrait lock (supported on Android/Chrome; ignored elsewhere)
   try{ if(screen.orientation && screen.orientation.lock) screen.orientation.lock('portrait').catch(()=>{}); }catch(e){}
 }
+function isFs(){ return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+function exitFullscreen(){
+  const ex = document.exitFullscreen || document.webkitExitFullscreen || document.webkitCancelFullScreen || document.msExitFullscreen;
+  if(ex){ try{ ex.call(document); }catch(e){} }
+}
+function toggleFullscreen(){ if(isFs()) exitFullscreen(); else goFullscreen(); }
+// keep the button icon in sync (⛶ = enter, ⤢ = exit)
+function updateFsBtn(){ const b=document.getElementById('fsBtn'); if(b) b.textContent = isFs() ? '🗗' : '⛶'; }
+document.addEventListener('fullscreenchange', updateFsBtn);
+document.addEventListener('webkitfullscreenchange', updateFsBtn);
+{ const _fsb=document.getElementById('fsBtn'); if(_fsb) _fsb.addEventListener('click', e=>{ e.stopPropagation(); toggleFullscreen(); }); }
 // arm fullscreen on the very first tap/click anywhere
 function armFullscreenOnce(){
   goFullscreen();
@@ -903,7 +972,9 @@ function goToPane(idx, skipAnim){
   const wrap=document.getElementById('menuSliderWrap');
   const slider=document.getElementById('menuSlider');
   if(!slider||!wrap) return;
-  const pw=wrap.offsetWidth||360;
+  // robust pane width: offsetWidth can read 0 mid-layout, so fall back to the
+  // bounding rect and finally the viewport width — never 0.
+  const pw=wrap.offsetWidth || Math.round(wrap.getBoundingClientRect().width) || window.innerWidth;
   slider.style.transition=skipAnim?'none':'transform .28s cubic-bezier(.4,0,.2,1)';
   slider.style.transform='translateX(-'+(menuPaneIdx*pw)+'px)';
   document.querySelectorAll('.menuTab').forEach((b,i)=>b.classList.toggle('active',i===menuPaneIdx));
@@ -913,6 +984,10 @@ function goToPane(idx, skipAnim){
   if(menuPaneIdx===2) renderModes();
   if(menuPaneIdx===3) renderBoard(leaderboardMenu, 20, -1);
 }
+// keep the active pane aligned when the viewport changes (rotation, browser bars, fullscreen)
+['resize','orientationchange'].forEach(ev=>window.addEventListener(ev, ()=>{
+  if(!startScreen.classList.contains('hidden')) goToPane(menuPaneIdx, true);
+}));
 
 // Tab click
 document.addEventListener('DOMContentLoaded', ()=>{
