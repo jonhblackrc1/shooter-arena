@@ -1,5 +1,5 @@
 // Shooter Arena service worker
-const CACHE = 'shooter-arena-v28';
+const CACHE = 'shooter-arena-v29';
 const ASSETS = [
   'index.html',
   'manifest.json',

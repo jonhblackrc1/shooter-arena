@@ -686,16 +686,114 @@ function levelRoster(lvl){
 function pickEnemyType(lvl){ const w=levelRoster(lvl); return w[(Math.random()*w.length)|0]; }
 
 // Spawn one enemy at a ring around the players (used both at level start and to refill).
-function spawnEnemyAt(){
-  const cfg=LEVELS[level];
+// ---- Spawn validation: position must be inside the arena, clear of obstacles,
+//      and a safe distance from every player (no unfair point-blank spawns). ----
+function validSpawn(x,y,r){
+  if(x<70||y<70||x>MAP_W-70||y>MAP_H-70) return false;
+  if(obstacleAt(x,y,r+24)) return false;                 // never on/near a crate
+  for(const p of players){ if(!p.out && Math.hypot(p.x-x,p.y-y) < 240) return false; }
+  return true;
+}
+function findSpawnPoint(r){
   const ref=alivePlayers()[0]||{x:MAP_W/2,y:MAP_H/2};
-  const ang=Math.random()*Math.PI*2;
-  const dist=340+Math.random()*420;
-  let x=ref.x+Math.cos(ang)*dist, y=ref.y+Math.sin(ang)*dist;
-  x=Math.max(60,Math.min(MAP_W-60,x));
-  y=Math.max(60,Math.min(MAP_H-60,y));
+  for(let k=0;k<24;k++){
+    const ang=Math.random()*Math.PI*2, dist=260+Math.random()*300;   // ring 260..560
+    const x=Math.max(70,Math.min(MAP_W-70, ref.x+Math.cos(ang)*dist));
+    const y=Math.max(70,Math.min(MAP_H-70, ref.y+Math.sin(ang)*dist));
+    if(validSpawn(x,y,r)) return {x,y};
+  }
+  for(let k=0;k<40;k++){                                   // fallback: anywhere valid
+    const x=70+Math.random()*(MAP_W-140), y=70+Math.random()*(MAP_H-140);
+    if(validSpawn(x,y,r)) return {x,y};
+  }
+  return {x:MAP_W/2,y:MAP_H/2};
+}
+// open an alien portal that will birth one enemy (chosen from the level roster)
+function openSpawnPortal(){
   const t=pickEnemyType(level+1);
-  enemies.push(makeEnemy(t.kind, t.elite, cfg, x, y));
+  const er=KIND[t.kind].r*(t.elite?ELITE.rMul:1);
+  const pt=findSpawnPoint(er);
+  portals.push({ x:pt.x, y:pt.y, kind:t.kind, elite:t.elite, er:er,
+    t:0, open:30, hold:12, close:18, phase:'open', spawned:false, rot:Math.random()*6.28,
+    hue: t.elite?'#ffd24d':(t.kind==='charger'?'#ffae42':(t.kind==='melee'?'#ff5a4a':'#b06af0')) });
+  sfx('portal');
+}
+// enemies "in flight" (alive minions + opening portals) — used for the simultaneous cap
+function inFlightCount(){ return enemies.filter(e=>!e.boss).length + portals.length; }
+// advance portals; spawn the enemy mid-cycle, then close
+function updatePortals(){
+  for(let i=portals.length-1;i>=0;i--){
+    const P=portals[i]; P.t++; P.rot+=0.16;
+    if(P.phase==='open'){
+      if(gfx.quality>0.6 && (P.t&1)===0){           // energy spiralling inward
+        const a=Math.random()*6.28, rr=P.er*1.7;
+        if(particles.length<MAX_PARTICLES) particles.push({x:P.x+Math.cos(a)*rr,y:P.y+Math.sin(a)*rr,vx:-Math.cos(a)*1.6,vy:-Math.sin(a)*1.6,life:0.5,color:P.hue});
+      }
+      if(P.t>=P.open){ P.phase='hold'; P.t=0; }
+    } else if(P.phase==='hold'){
+      if(!P.spawned && P.t>=2){                       // the enemy emerges
+        const e=makeEnemy(P.kind, P.elite, LEVELS[level], P.x, P.y);
+        e.emerge=10; enemies.push(e); P.spawned=true; spawnParticles(P.x,P.y,P.hue,8);
+      }
+      if(P.t>=P.hold){ P.phase='close'; P.t=0; }
+    } else if(P.phase==='close' && P.t>=P.close){ portals.splice(i,1); }
+  }
+}
+// portal visuals: dynamic light glow + swirling energy arcs + bright core
+function drawPortals(){
+  for(const P of portals){
+    if(!inView(P.x,P.y,140)) continue;
+    const x=P.x-cam.x, y=P.y-cam.y;
+    let s = P.phase==='open' ? P.t/P.open : (P.phase==='close' ? 1-P.t/P.close : 1);
+    s=Math.max(0,Math.min(1,s));
+    const R=P.er*1.7*s;
+    ctx.save(); ctx.translate(x,y);
+    const g=ctx.createRadialGradient(0,0,0,0,0,R*2.2);
+    g.addColorStop(0,P.hue); g.addColorStop(0.3,'rgba(180,110,240,0.35)'); g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.globalAlpha=0.5*s; ctx.fillStyle=g; ctx.beginPath(); ctx.arc(0,0,R*2.2,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha=1; ctx.rotate(P.rot);
+    ctx.strokeStyle=P.hue; ctx.lineWidth=2.5;
+    for(let k=0;k<3;k++){ ctx.globalAlpha=0.85*s; ctx.beginPath(); ctx.arc(0,0,Math.max(1,R*(0.9-k*0.18)), k*2, k*2+2.4); ctx.stroke(); }
+    ctx.globalAlpha=0.9*s; ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(0,0,R*0.3,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha=0.5*s; ctx.fillStyle=P.hue; ctx.beginPath(); ctx.arc(0,0,R*0.58,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha=1; ctx.restore();
+  }
+}
+
+// ---- Steering: move an enemy toward heading `a` with obstacle avoidance +
+//      separation from peers + an unstuck nudge. ----
+function steerToward(e, a, speed){
+  let ax=Math.cos(a), ay=Math.sin(a);
+  // obstacle avoidance — steer tangentially around the nearest crate ahead
+  let near=null, nd=1e9;
+  for(const o of obstacles){
+    const ox=o.x-e.x, oy=o.y-e.y, d=Math.hypot(ox,oy), reach=o.hw+e.r+46;
+    if(d<reach && (ox*ax+oy*ay)>0 && d<nd){ nd=d; near=o; }
+  }
+  if(near){
+    const ox=near.x-e.x, oy=near.y-e.y;
+    const t1x=-oy,t1y=ox, t2x=oy,t2y=-ox;
+    const useFirst=(t1x*ax+t1y*ay)>=(t2x*ax+t2y*ay);
+    let tx=useFirst?t1x:t2x, ty=useFirst?t1y:t2y; const tl=Math.hypot(tx,ty)||1; tx/=tl; ty/=tl;
+    const w=Math.max(0,Math.min(1, 1-(nd-near.hw-e.r)/46));
+    ax=ax*(1-w)+tx*w*1.5; ay=ay*(1-w)+ty*w*1.5;
+  }
+  // separation from overlapping peers
+  let sx=0, sy=0;
+  for(const o of enemies){
+    if(o===e||o.boss) continue;
+    const dx=e.x-o.x, dy=e.y-o.y, d2=dx*dx+dy*dy, rr=e.r+o.r;
+    if(d2>0.01 && d2 < rr*rr*1.7){ const d=Math.sqrt(d2); sx+=dx/d; sy+=dy/d; }
+  }
+  ax+=sx*0.7; ay+=sy*0.7;
+  const l=Math.hypot(ax,ay)||1; ax/=l; ay/=l;
+  const bx=e.x, by=e.y;
+  moveColliding(e, ax*speed, ay*speed);
+  // unstuck: if barely moved, push perpendicular for a few frames
+  if(Math.hypot(e.x-bx,e.y-by) < speed*0.3){
+    e.stuckT=(e.stuckT||0)+1;
+    if(e.stuckT>4){ const pa=a+(Math.random()<0.5?1.57:-1.57); moveColliding(e, Math.cos(pa)*speed, Math.sin(pa)*speed); }
+  } else e.stuckT=0;
 }
 
 // ---- Melee attack cycle: chase → wind-up (telegraph) → strike (damage on the
@@ -716,7 +814,7 @@ function updateMeleeEnemy(e, tp, a, dist){
   } else if(e.astate==='recover'){
     if(--e.atimer<=0) e.astate='chase';          // cooldown after the swing
   } else {                                        // chase
-    moveColliding(e, Math.cos(a)*e.speed, Math.sin(a)*e.speed);
+    steerToward(e, a, e.speed);                   // avoids crates, separates from peers
     if(tp && dist <= reach){ e.astate='windup'; e.atimer=16; }
   }
 }
@@ -744,7 +842,7 @@ function updateCharger(e, tp, a, dist){
     if(--e.ctimer<=0) e.cstate='roam';
   } else {                                         // roam — approach to medium range, then wind up
     e.faceAng=a;
-    moveColliding(e, Math.cos(a)*e.speed, Math.sin(a)*e.speed);
+    steerToward(e, a, e.speed);                     // avoids crates, separates from peers
     if(tp && dist <= DETECT && dist > e.r+tp.r+20){ e.cstate='windup'; e.ctimer=48+Math.floor(Math.random()*24); }
   }
 }
@@ -845,6 +943,13 @@ function effectiveWeapon(key){
 let level, boss, bossSpawned, state;
 let enemies=[], bullets=[], eBullets=[], particles=[], pickups=[];
 let enemiesPending=0;  // remaining enemies to trickle in this level (simultaneous cap system)
+let portals=[];        // alien spawn portals currently opening/closing
+const MAX_PARTICLES=300;
+// adaptive graphics quality (auto-scales with measured FPS for mid-range Android)
+let gfx={ quality:1, fps:60, _acc:0, _n:0, _t:0 };
+// ambient world FX (screen-space, pooled fixed arrays — no per-frame allocation)
+let ambient={ motes:[], meteors:[], wind:{x:-0.28,y:0.05}, windTarget:{x:-0.28,y:0.05},
+              stormT:0, stormCD:480+Math.random()*720, meteorCD:240+Math.random()*360, t:0, ready:false };
 
 // ---- Players (1 in single-player; several in online co-op) ----
 let players=[];        // every player in the simulation
@@ -916,10 +1021,11 @@ function sfx(type){
   if(!settings.sound) return;
   const ac=ensureAudio(); if(!ac) return;
   const now=ac.currentTime;
-  const gaps={shoot:0.05, hurt:0.12, enemyDie:0.03}; // throttle the spammy ones
+  const gaps={shoot:0.05, hurt:0.12, enemyDie:0.03, portal:0.04}; // throttle the spammy ones
   if(gaps[type]){ if(now-(_sfxLast[type]||0) < gaps[type]) return; _sfxLast[type]=now; }
   let f=440,dur=0.08,vol=0.06,wave='square',slide=0;
   if(type==='shoot'){ f=200; dur=0.05; vol=0.035; wave='square'; }
+  else if(type==='portal'){ f=150; dur=0.5; vol=0.07; wave='sine'; slide=2.6; } // rising alien shimmer
   else if(type==='enemyDie'){ f=130; dur=0.13; vol=0.06; wave='triangle'; slide=-0.6; }
   else if(type==='hurt'){ f=85; dur=0.18; vol=0.09; wave='sawtooth'; slide=-0.4; }
   else if(type==='pickup'){ f=660; dur=0.13; vol=0.07; wave='sine'; slide=0.6; }
@@ -1286,9 +1392,18 @@ function buildWorld(){
   for(let i=0;i<21;i++){ const p=away(170); decor.push({type:'rock', x:p.x, y:p.y, r:rnd(10,36), seed:Math.random()}); }
   // a few rusted colony ruins
   for(let i=0;i<4;i++){ const p=away(420); decor.push({type:'building', x:p.x, y:p.y, w:rnd(90,200), h:rnd(90,200), seed:Math.random()}); }
+  // ---- alien-invaded Mars set-dressing (animated in draw) ----
+  for(let i=0;i<6;i++) decor.push({type:'glowcrack', x:rnd(60,MAP_W-60), y:rnd(60,MAP_H-60), len:rnd(70,180), a:rnd(0,Math.PI), seed:Math.random(), hue:(Math.random()<0.5?'#7affd1':'#b06af0')}); // energy cracks
+  for(let i=0;i<3;i++){ const p=away(240); decor.push({type:'idleportal', x:p.x, y:p.y, r:rnd(20,34), seed:Math.random()}); } // dormant portals
+  for(let i=0;i<5;i++){ const p=away(220); decor.push({type:'crystal', x:p.x, y:p.y, r:rnd(14,30), seed:Math.random(), hue:(Math.random()<0.5?'#8a5cff':'#42f5e3')}); } // glowing crystals
+  for(let i=0;i<7;i++){ const p=away(150); decor.push({type:'alienveg', x:p.x, y:p.y, r:rnd(10,22), seed:Math.random()}); } // corrupted vegetation
+  for(let i=0;i<2;i++){ const p=away(380); decor.push({type:'crashship', x:p.x, y:p.y, w:rnd(120,180), a:rnd(0,Math.PI), seed:Math.random()}); } // crashed ships
+  for(let i=0;i<3;i++){ const p=away(300); decor.push({type:'antenna', x:p.x, y:p.y, h:rnd(60,110), seed:Math.random()}); } // broken antennas
+  for(let i=0;i<2;i++){ const p=away(300); decor.push({type:'smokevent', x:p.x, y:p.y, seed:Math.random()}); } // smoking vents
   // draw order: flat decals first, then standing props sorted by y for fake depth
-  const flat=t=>(t==='crack'||t==='dust'||t==='crater')?0:1;
+  const flat=t=>(t==='crack'||t==='dust'||t==='crater'||t==='glowcrack'||t==='idleportal')?0:1;
   decor.sort((a,b)=>{ const ga=flat(a.type), gb=flat(b.type); return ga!==gb ? ga-gb : a.y-b.y; });
+  ambient.ready=false; // (re)seed ambient FX for the new arena
   // ---- solid crates (block movement) ----
   obstacles=[];
   for(let i=0;i<10;i++){ const p=away(260); obstacles.push({x:p.x, y:p.y, hw:rnd(26,46), seed:Math.random()}); }
@@ -1363,21 +1478,27 @@ function drawMissiles(){
 function startLevel(idx, fresh){
   level=idx;
   const cfg=LEVELS[idx];
-  enemies=[]; bullets=[]; eBullets=[]; particles=[]; missiles=[];
+  enemies=[]; bullets=[]; eBullets=[]; particles=[]; missiles=[]; portals=[];
   pickups = []; // health/shield only — no weapon drops
   boss=null; bossSpawned=false;
-  // place all players near the centre (spread in a small ring), refill their health
-  players.forEach((p,i)=>{
-    const ang=(i/Math.max(1,players.length))*Math.PI*2;
-    p.x=MAP_W/2+Math.cos(ang)*(players.length>1?60:0);
-    p.y=MAP_H/2+Math.sin(ang)*(players.length>1?60:0);
-    if(!p.out){ p.hp=p.maxHp; p.invuln=60; }
-  });
-  // spawn up to the simultaneous cap now; the rest trickle in as enemies die
+  // Only a FRESH game recentres & heals the players. Between rounds they stay
+  // exactly where they finished, with the health they had — tension carries over.
+  if(fresh){
+    players.forEach((p,i)=>{
+      const ang=(i/Math.max(1,players.length))*Math.PI*2;
+      p.x=MAP_W/2+Math.cos(ang)*(players.length>1?60:0);
+      p.y=MAP_H/2+Math.sin(ang)*(players.length>1?60:0);
+      if(!p.out){ p.hp=p.maxHp; p.invuln=60; }
+    });
+  } else {
+    // brief grace so portals opening on top of you aren't an instant hit (no heal, no move)
+    players.forEach(p=>{ if(!p.out) p.invuln=Math.max(p.invuln||0,40); });
+  }
+  // open spawn portals up to the simultaneous cap; the rest trickle in as enemies die
   const total=cfg.enemies;
   const cap=levelMaxAlive(idx+1);
   const initial=Math.min(total, cap);
-  for(let i=0;i<initial;i++) spawnEnemyAt();
+  for(let i=0;i<initial;i++) openSpawnPortal();
   enemiesPending=total-initial;
   // health pickups
   const hCount = 1; // health pickups halved per round
@@ -1531,8 +1652,11 @@ window.addEventListener('keydown',e=>{
 window.addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; });
 
 // ---- Helpers ----
+// particle count scales with graphics quality; a hard cap prevents runaway GC on weak devices
 function spawnParticles(x,y,color,n){
+  n=Math.max(1, Math.round(n*gfx.quality));
   for(let i=0;i<n;i++){
+    if(particles.length>=MAX_PARTICLES) break;
     const a=Math.random()*Math.PI*2, s=Math.random()*4+1;
     particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1,color});
   }
@@ -1681,9 +1805,9 @@ function update(){
         const R=attackRange();
         const tooClose=R*0.35;
         if(dist < tooClose){
-          moveColliding(e, -Math.cos(a)*e.speed, -Math.sin(a)*e.speed); // very close → back off a bit
+          steerToward(e, a+Math.PI, e.speed);   // very close → back off (still avoids crates)
         } else {
-          moveColliding(e, Math.cos(a)*e.speed, Math.sin(a)*e.speed);   // otherwise approach the player
+          steerToward(e, a, e.speed);           // otherwise approach the player
         }
         e.faceAng=a;
         e.fireCD--;
@@ -1750,17 +1874,20 @@ function update(){
       if(taken) pickups.splice(i,1);
     }
 
-    // trickle reinforcements in until the simultaneous cap, then handle level end
+    // animate alien spawn portals (they birth the enemies)
+    updatePortals();
+
+    // open reinforcement portals up to the simultaneous cap, then handle level end
     if(!bossSpawned){
       const aliveMinions=enemies.filter(e=>!e.boss).length;
       if(enemiesPending>0){
         const cap=levelMaxAlive(level+1);
-        let guard=4;                                  // at most 4 spawns per frame (smooth)
-        while(enemiesPending>0 && enemies.filter(e=>!e.boss).length<cap && guard-->0){
-          spawnEnemyAt(); enemiesPending--;
+        let guard=3;                                  // at most 3 new portals per frame (smooth)
+        while(enemiesPending>0 && inFlightCount()<cap && guard-->0){
+          openSpawnPortal(); enemiesPending--;
         }
-      } else if(aliveMinions===0){
-        // all minions defeated: spawn the boss (boss levels) or clear the level
+      } else if(aliveMinions===0 && portals.length===0){
+        // every minion defeated AND no portals still birthing: boss or clear
         if(levelHasBoss(level)) spawnBoss();
         else levelClear();
       }
@@ -1784,6 +1911,8 @@ function update(){
     }
     // random airstrike (missiles fall in the camera every 10s)
     updateMissiles();
+    // living, dynamic Mars atmosphere (dust, wind, storms, meteors)
+    updateAmbient();
 
     // game over when everyone is down
     if(alivePlayers().length===0) gameOver(false);
@@ -1859,11 +1988,18 @@ function drawDecor(){
   for(const d of decor){
     if(!inView(d.x,d.y,160)) continue;
     switch(d.type){
-      case 'crack':    drawCrack(d);    break;
-      case 'dust':     drawDust(d);     break;
-      case 'crater':   drawCrater(d);   break;
-      case 'rock':     drawRock(d);     break;
-      case 'building': drawBuilding(d); break;
+      case 'crack':     drawCrack(d);     break;
+      case 'dust':      drawDust(d);      break;
+      case 'crater':    drawCrater(d);    break;
+      case 'rock':      drawRock(d);      break;
+      case 'building':  drawBuilding(d);  break;
+      case 'glowcrack': drawGlowCrack(d); break;
+      case 'idleportal':drawIdlePortal(d);break;
+      case 'crystal':   drawCrystal(d);   break;
+      case 'alienveg':  drawAlienVeg(d);  break;
+      case 'crashship': drawCrashShip(d); break;
+      case 'antenna':   drawAntenna(d);   break;
+      case 'smokevent': drawSmokeVent(d); break;
     }
   }
 }
@@ -1959,6 +2095,153 @@ function drawBuilding(d){
   ctx.beginPath(); ctx.moveTo(w/2,-h/2); ctx.lineTo(w/2,-h/2+h*0.42); ctx.lineTo(w/2-w*0.38,-h/2); ctx.closePath(); ctx.fill();
   ctx.restore();
 }
+// ===================== Alien-Mars animated set-dressing =====================
+function drawGlowCrack(d){
+  ctx.save(); ctx.translate(d.x-cam.x,d.y-cam.y); ctx.rotate(d.a);
+  const t=performance.now()*0.003, n=5, seg=d.len/n; const pts=[]; let px=-d.len/2;
+  pts.push([px,0]); for(let i=1;i<=n;i++){ px+=seg; pts.push([px, Math.sin(i*2.1+d.seed*6)*6]); }
+  ctx.strokeStyle='rgba(20,6,3,0.6)'; ctx.lineWidth=5; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]); ctx.stroke();
+  ctx.strokeStyle=d.hue; ctx.lineWidth=2; ctx.globalAlpha=0.85;
+  if(gfx.quality>0.7){ ctx.shadowColor=d.hue; ctx.shadowBlur=8; }   // glow only on higher quality
+  ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]); ctx.stroke();
+  ctx.shadowBlur=0;
+  const fp=t%1, idx=fp*d.len - d.len/2;                              // pulse of energy flowing along it
+  ctx.globalAlpha=0.9; ctx.fillStyle='#fff';
+  ctx.beginPath(); ctx.arc(idx, Math.sin(fp*6+d.seed*6)*4, 2.5,0,6.28); ctx.fill();
+  ctx.globalAlpha=1; ctx.restore();
+}
+function drawIdlePortal(d){
+  const x=d.x-cam.x, y=d.y-cam.y, r=d.r, t=performance.now()*0.001;
+  const fl=0.18+0.14*Math.sin(t*1.5+d.seed*6)+(Math.random()<0.015?0.4:0);  // dim, occasional flicker
+  ctx.globalAlpha=fl; ctx.strokeStyle='#7a5cc0'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.arc(x,y,r,0,6.28); ctx.stroke();
+  ctx.globalAlpha=fl*0.5; ctx.fillStyle='#4a2a8a';
+  ctx.beginPath(); ctx.arc(x,y,r*0.7,0,6.28); ctx.fill(); ctx.globalAlpha=1;
+}
+function drawCrystal(d){
+  const x=d.x-cam.x, y=d.y-cam.y, r=d.r, t=performance.now()*0.002;
+  const pulse=0.6+0.4*Math.sin(t*2+d.seed*6);
+  ctx.globalAlpha=0.22*pulse; ctx.fillStyle=d.hue;
+  ctx.beginPath(); ctx.arc(x,y,r*1.6,0,6.28); ctx.fill(); ctx.globalAlpha=1;
+  const n=5;
+  for(let i=0;i<n;i++){
+    const a=(i/n)*6.28+d.seed*3, bx=x+Math.cos(a)*r*0.3, by=y+Math.sin(a)*r*0.3;
+    const tx=x+Math.cos(a)*r, ty=y+Math.sin(a)*r-r*0.4;
+    ctx.fillStyle=d.hue; ctx.globalAlpha=0.85;
+    ctx.beginPath(); ctx.moveTo(bx-3,by); ctx.lineTo(tx,ty); ctx.lineTo(bx+3,by); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha=0.5; ctx.fillStyle='#fff';
+    ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(tx-2,ty+6); ctx.lineTo(tx+2,ty+6); ctx.closePath(); ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+function drawAlienVeg(d){
+  ctx.save(); ctx.translate(d.x-cam.x,d.y-cam.y);
+  const t=performance.now()*0.001, r=d.r;
+  ctx.strokeStyle='#6a2a7a'; ctx.lineWidth=3; ctx.lineCap='round';
+  for(let i=0;i<4;i++){
+    const base=(i/4)*6.28, sway=Math.sin(t*1.5+i+d.seed*6)*r*0.4;
+    ctx.beginPath(); ctx.moveTo(0,0);
+    ctx.quadraticCurveTo(Math.cos(base)*r*0.5+sway,-r*0.6, Math.cos(base)*r*0.3+sway,-r); ctx.stroke();
+    ctx.fillStyle='#c44aff'; ctx.globalAlpha=0.8;
+    ctx.beginPath(); ctx.arc(Math.cos(base)*r*0.3+sway,-r,2.5,0,6.28); ctx.fill(); ctx.globalAlpha=1;
+  }
+  ctx.restore();
+}
+function drawCrashShip(d){
+  ctx.save(); ctx.translate(d.x-cam.x,d.y-cam.y); ctx.rotate(d.a);
+  const w=d.w, h=w*0.5;
+  ctx.fillStyle='rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.ellipse(6,8,w*0.55,h*0.55,0,0,6.28); ctx.fill();
+  ctx.fillStyle='#6b6f7a'; ctx.beginPath(); ctx.ellipse(0,0,w*0.5,h*0.5,0,0,6.28); ctx.fill();
+  ctx.fillStyle='#4a4e57'; ctx.beginPath(); ctx.ellipse(-w*0.12,-h*0.1,w*0.32,h*0.32,0,0,6.28); ctx.fill();
+  ctx.fillStyle='#2a3340'; ctx.beginPath(); ctx.ellipse(w*0.28,0,w*0.14,h*0.22,0,0,6.28); ctx.fill();  // cockpit
+  ctx.fillStyle='#5a5e68'; ctx.beginPath(); ctx.moveTo(-w*0.1,-h*0.4); ctx.lineTo(-w*0.5,-h*0.8); ctx.lineTo(-w*0.2,-h*0.2); ctx.closePath(); ctx.fill(); // broken wing
+  const t=performance.now()*0.005; ctx.globalAlpha=0.4+0.2*Math.sin(t+d.seed*6); // smouldering glow
+  ctx.fillStyle='#ff6a2a'; ctx.beginPath(); ctx.arc(-w*0.2,h*0.1,5,0,6.28); ctx.fill(); ctx.globalAlpha=1;
+  ctx.restore();
+}
+function drawAntenna(d){
+  const x=d.x-cam.x, y=d.y-cam.y, h=d.h, t=performance.now()*0.001, tipX=x+Math.sin(d.seed)*8;
+  ctx.strokeStyle='#3a3e46'; ctx.lineWidth=4; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(tipX,y-h); ctx.stroke();
+  ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x-10,y-h*0.5); ctx.lineTo(x+10,y-h*0.5); ctx.stroke();
+  if(Math.sin(t*3+d.seed*6)>0.6){                              // blinking warning light
+    ctx.fillStyle='#ff3b3b'; ctx.globalAlpha=0.9; ctx.beginPath(); ctx.arc(tipX,y-h,3.5,0,6.28); ctx.fill();
+    ctx.globalAlpha=0.3; ctx.beginPath(); ctx.arc(tipX,y-h,7,0,6.28); ctx.fill(); ctx.globalAlpha=1;
+  }
+  if(Math.random()<0.07){                                      // electric spark flicker
+    ctx.strokeStyle='#fff3b0'; ctx.globalAlpha=0.8; ctx.lineWidth=1.5;
+    const sx=x+Math.sin(d.seed)*4, sy=y-h*0.5;
+    ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx+(Math.random()-0.5)*12, sy+(Math.random()-0.5)*12); ctx.stroke(); ctx.globalAlpha=1;
+  }
+}
+function drawSmokeVent(d){
+  const x=d.x-cam.x, y=d.y-cam.y, t=performance.now()*0.001;
+  ctx.fillStyle='#2a2018'; ctx.beginPath(); ctx.ellipse(x,y,10,5,0,0,6.28); ctx.fill();
+  const puffs=gfx.quality>0.6?4:2;
+  for(let i=0;i<puffs;i++){
+    const ph=((t*0.4+i*0.25+d.seed)%1), py=y-ph*46, pxx=x+Math.sin(ph*6+d.seed*6)*8;
+    ctx.globalAlpha=(1-ph)*0.3; ctx.fillStyle='#5a4a40';
+    ctx.beginPath(); ctx.arc(pxx,py,5+ph*10,0,6.28); ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+// ===================== Ambient overlay FX (screen-space, pooled) =====================
+function initAmbient(){
+  ambient.motes.length=0;
+  const n=Math.round(70*gfx.quality);
+  for(let i=0;i<n;i++) ambient.motes.push({x:Math.random()*W, y:Math.random()*H, z:0.4+Math.random()*0.9, r:0.6+Math.random()*1.8, a:0.08+Math.random()*0.22});
+  ambient.meteors.length=0;
+  ambient.ready=true;
+}
+function updateAmbient(){
+  if(!ambient.ready) initAmbient();
+  ambient.t++;
+  // dust storms: occasionally shift the wind hard for a few seconds
+  if(ambient.stormT<=0){ ambient.stormCD--; if(ambient.stormCD<=0){
+    ambient.stormDur=ambient.stormT=240+Math.floor(Math.random()*240);
+    const dir=Math.random()*6.28; ambient.windTarget={x:Math.cos(dir)*2.4, y:Math.sin(dir)*0.9};
+    ambient.stormCD=600+Math.floor(Math.random()*900);
+  }} else { ambient.stormT--; if(ambient.stormT===0) ambient.windTarget={x:-0.28,y:0.05}; }
+  ambient.wind.x+=(ambient.windTarget.x-ambient.wind.x)*0.02;
+  ambient.wind.y+=(ambient.windTarget.y-ambient.wind.y)*0.02;
+  const wx=ambient.wind.x, wy=ambient.wind.y;
+  for(const m of ambient.motes){
+    m.x+=wx*m.z+Math.sin((ambient.t+m.y)*0.01)*0.2; m.y+=wy*m.z+0.15*m.z;
+    if(m.x<-4)m.x=W+4; else if(m.x>W+4)m.x=-4;
+    if(m.y<-4)m.y=H+4; else if(m.y>H+4)m.y=-4;
+  }
+  // occasional meteor streaks
+  ambient.meteorCD--;
+  if(ambient.meteorCD<=0){ ambient.meteorCD=300+Math.floor(Math.random()*500);
+    ambient.meteors.push({x:Math.random()*W*0.6, y:-20, vx:5+Math.random()*4, vy:3+Math.random()*2, life:1}); }
+  for(let i=ambient.meteors.length-1;i>=0;i--){ const me=ambient.meteors[i]; me.x+=me.vx; me.y+=me.vy; me.life-=0.012;
+    if(me.life<=0||me.y>H+30) ambient.meteors.splice(i,1); }
+}
+function drawAmbient(){
+  // breathing reddish fog
+  ctx.fillStyle='rgba(150,40,20,'+(0.05+0.03*Math.sin(ambient.t*0.01)).toFixed(3)+')';
+  ctx.fillRect(0,0,W,H);
+  // dust storm haze (eases in/out)
+  if(ambient.stormT>0){
+    const ph=Math.min(ambient.stormT, ambient.stormDur-ambient.stormT);
+    const sa=Math.min(1, ph/45);
+    ctx.globalAlpha=0.2*sa; ctx.fillStyle='#b8592d'; ctx.fillRect(0,0,W,H); ctx.globalAlpha=1;
+  }
+  // floating dust motes
+  ctx.fillStyle='#d98a5a';
+  for(const m of ambient.motes){ ctx.globalAlpha=m.a*(ambient.stormT>0?1.8:1); ctx.beginPath(); ctx.arc(m.x,m.y,m.r,0,6.28); ctx.fill(); }
+  ctx.globalAlpha=1;
+  // meteors crossing the sky
+  for(const me of ambient.meteors){
+    const tx=me.x-me.vx*5, ty=me.y-me.vy*5;
+    const g=ctx.createLinearGradient(tx,ty,me.x,me.y);
+    g.addColorStop(0,'rgba(255,200,120,0)'); g.addColorStop(1,'rgba(255,230,170,'+Math.min(1,me.life*1.4).toFixed(2)+')');
+    ctx.strokeStyle=g; ctx.lineWidth=2.5; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(me.x,me.y); ctx.stroke();
+    ctx.fillStyle='#fff8e0'; ctx.beginPath(); ctx.arc(me.x,me.y,2,0,6.28); ctx.fill();
+  }
+}
 function drawCar(d){
   ctx.save(); ctx.translate(d.x-cam.x,d.y-cam.y); ctx.rotate(d.a);
   const L=52, Wd=26;
@@ -2025,6 +2308,7 @@ function render(){
   drawDecor();
   drawObstacles();
   drawBoundary();
+  drawPortals();   // alien spawn portals (under enemies)
 
   // particles
   for(const p of particles){
@@ -2066,7 +2350,11 @@ function render(){
     if(e.boss){
       drawAlienBoss(e);
     } else {
-      drawAlien(e);
+      if(e.emerge>0){   // scale-in as it emerges from its portal
+        const sc=1-(e.emerge/10)*0.55, sx=e.x-cam.x, sy=e.y-cam.y;
+        ctx.save(); ctx.translate(sx,sy); ctx.scale(sc,sc); ctx.translate(-sx,-sy);
+        drawAlien(e); ctx.restore(); e.emerge-=0.5;
+      } else drawAlien(e);
       // hp pip
       if(e.hp<e.maxHp){
         ctx.fillStyle='#22182f'; ctx.fillRect(e.x-cam.x-12,e.y-cam.y-e.r-12,24,4);
@@ -2114,6 +2402,9 @@ function render(){
   vg.addColorStop(0.6,'rgba(70,26,12,0.18)');
   vg.addColorStop(1,'rgba(20,6,3,0.62)');
   ctx.fillStyle=vg; ctx.fillRect(0,0,W,H);
+
+  // living atmosphere overlay: fog, dust motes, storms, meteors
+  if(inGame) drawAmbient();
 
   // on-screen controls
   drawControls();
@@ -2878,6 +3169,19 @@ function drawThreatIndicator(){
 
 // Render via requestAnimationFrame when the tab is visible.
 function loop(){
+  // adaptive quality: sample average frame time and step quality up/down so
+  // mid-range Android keeps a smooth framerate.
+  const now=performance.now();
+  if(gfx._t){ gfx._acc+=now-gfx._t; gfx._n++;
+    if(gfx._n>=30){
+      gfx.fps=1000/(gfx._acc/gfx._n); gfx._acc=0; gfx._n=0;
+      const q=gfx.quality;
+      if(gfx.fps<42 && gfx.quality>0.5) gfx.quality=Math.max(0.5,gfx.quality-0.25);
+      else if(gfx.fps>56 && gfx.quality<1) gfx.quality=Math.min(1,gfx.quality+0.25);
+      if(gfx.quality!==q) ambient.ready=false;   // re-seed mote count for the new quality
+    }
+  }
+  gfx._t=now;
   if(!document.hidden){ update(); render(); }
   requestAnimationFrame(loop);
 }
