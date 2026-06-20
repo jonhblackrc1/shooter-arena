@@ -655,8 +655,9 @@ const LEVELS=[
   }
 })();
 
-// Max enemies alive at once (rises with level; the rest trickle in as kills happen).
-function levelMaxAlive(lvl){ return Math.min(12 + Math.floor(lvl*0.7), 38); }
+// Hard cap: never more than 10 enemies alive at once (the rest queue and trickle in).
+function levelMaxAlive(lvl){ return 10; }
+const SPAWN_INTERVAL=34;   // frames between portal openings (slower, measured pacing)
 
 // Per-kind base tuning. Elite multipliers are layered on top.
 const KIND={
@@ -676,7 +677,7 @@ function makeEnemy(kind, elite, cfg, x, y){
   const lvl=level+1;
   const K=KIND[kind];
   let hp=enemyBaseHp(lvl)*K.hpMul;
-  let spd=cfg.espeed*K.spdMul;
+  let spd=cfg.espeed*K.spdMul*0.75;   // global 25% slowdown for tactical pacing
   let r=K.r, score=K.score, coin=K.coin;
   let dmg = kind==='charger' ? chargerHitDmg(lvl) : (kind==='melee' ? meleeHitDmg(lvl) : 0);
   if(elite){
@@ -692,22 +693,58 @@ function makeEnemy(kind, elite, cfg, x, y){
   return e;
 }
 
-// Weighted roster per level: which kinds spawn and how many are Elite.
-function levelRoster(lvl){
-  const w=[]; const add=(kind,elite,n)=>{ for(let i=0;i<n;i++) w.push({kind,elite}); };
-  if(lvl<=5){            add('melee',false,10); }                                                   // only melee
-  else if(lvl<=10){      add('melee',false,8);  add('ranged',false,3); }                            // mostly melee + some ranged
-  else if(lvl<=15){      add('melee',false,5);  add('ranged',false,5); }                            // balanced
-  else if(lvl<=20){      add('melee',false,5);  add('ranged',false,4); add('charger',false,2); }    // chargers appear
-  else if(lvl<=25){      add('melee',false,5);  add('ranged',false,4); add('charger',false,4); }    // more chargers
-  else if(lvl<=30){      add('melee',false,4);  add('melee',true,2);  add('ranged',false,4); add('charger',false,3); } // melee elite
-  else if(lvl<=35){      add('melee',false,4);  add('melee',true,2);  add('ranged',false,3); add('ranged',true,2); add('charger',false,3); } // ranged elite
-  else if(lvl<=40){      add('melee',false,3);  add('melee',true,2);  add('ranged',false,3); add('ranged',true,2); add('charger',false,2); add('charger',true,2); } // charger elite
-  else if(lvl<=45){      add('melee',false,3);  add('melee',true,3);  add('ranged',false,3); add('ranged',true,3); add('charger',false,2); add('charger',true,2); } // intense mix
-  else {                 add('melee',false,2);  add('melee',true,4);  add('ranged',false,2); add('ranged',true,3); add('charger',false,3); add('charger',true,4); } // max difficulty
-  return w;
+// ---- Hand-crafted round composition (≤10 enemies). Returns per-type counts:
+//      m/me = melee / melee-elite, r/re = ranged / ranged-elite, c/ce = charger / charger-elite.
+//      Charger-elite is capped at 1 so several never appear at once. ----
+function roundComposition(lvl){
+  let m=0,me=0,r=0,re=0,c=0,ce=0;
+  if(lvl<=5){                                  // 3-5, only melee
+    m=[3,3,4,4,5][lvl-1];
+  } else if(lvl<=10){                          // 5-6, introduce ranged
+    const tot=[5,5,6,6,6][lvl-6]; r=[1,1,1,2,2][lvl-6]; m=tot-r;
+  } else if(lvl<=15){                          // 6-7, balanced
+    const tot=[6,6,7,7,7][lvl-11]; r=Math.floor(tot/2); m=tot-r;
+  } else if(lvl<=20){                          // 7, chargers appear
+    m=4; r=2; c=1;
+  } else if(lvl<=25){                          // 7-8, more ranged + chargers
+    const tot=[7,7,8,8,8][lvl-21]; c=2; r=3; m=tot-r-c;
+  } else if(lvl<=30){                          // ~8, melee elite introduced
+    m=4; r=2; c=1; me=1;
+  } else if(lvl<=35){                          // ~8, ranged elite introduced
+    m=3; r=2; c=1; me=1; re=1;
+  } else if(lvl<=40){                          // 10, charger elite introduced
+    m=2; r=2; c=2; me=2; re=1; ce=1;
+  } else if(lvl<=45){                          // 9, all six types (rotated for variety)
+    const v=[ {m:3,r:2,c:1,me:1,re:1,ce:1}, {m:2,r:2,c:1,me:2,re:1,ce:1},
+              {m:2,r:1,c:2,me:2,re:1,ce:1}, {m:2,r:2,c:1,me:1,re:2,ce:1},
+              {m:1,r:2,c:2,me:2,re:1,ce:1} ][(lvl-41)%5];
+    m=v.m; r=v.r; c=v.c; me=v.me; re=v.re; ce=v.ce;
+  } else {                                     // 46-50: always 10, heavy elite, varied combos
+    const v=[ {m:2,r:1,c:1,me:3,re:2,ce:1}, {m:1,r:2,c:1,me:3,re:2,ce:1},
+              {m:2,r:2,c:1,me:2,re:2,ce:1}, {m:1,r:1,c:2,me:3,re:2,ce:1},
+              {m:2,r:1,c:1,me:2,re:3,ce:1} ][Math.floor(Math.random()*5)];
+    m=v.m; r=v.r; c=v.c; me=v.me; re=v.re; ce=v.ce;
+  }
+  return {m,me,r,re,c,ce};
 }
-function pickEnemyType(lvl){ const w=levelRoster(lvl); return w[(Math.random()*w.length)|0]; }
+// Build the actual spawn list for a round: flatten the counts, cap at 10, shuffle,
+// then de-cluster so 3 identical enemies never spawn back-to-back (tactical variety).
+function buildRoundRoster(lvl){
+  const cc=roundComposition(lvl);
+  let list=[]; const push=(k,el,n)=>{ for(let i=0;i<n;i++) list.push({kind:k,elite:el}); };
+  push('melee',false,cc.m); push('melee',true,cc.me);
+  push('ranged',false,cc.r); push('ranged',true,cc.re);
+  push('charger',false,cc.c); push('charger',true,cc.ce);
+  if(list.length>10) list=list.slice(0,10);
+  for(let i=list.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t=list[i]; list[i]=list[j]; list[j]=t; }
+  const key=e=>e.kind+(e.elite?'E':'');
+  for(let i=2;i<list.length;i++){
+    if(key(list[i])===key(list[i-1]) && key(list[i])===key(list[i-2])){
+      for(let j=i+1;j<list.length;j++){ if(key(list[j])!==key(list[i])){ const t=list[i]; list[i]=list[j]; list[j]=t; break; } }
+    }
+  }
+  return list;
+}
 
 // Spawn one enemy at a ring around the players (used both at level start and to refill).
 // ---- Spawn validation: position must be inside the arena, clear of obstacles,
@@ -732,9 +769,9 @@ function findSpawnPoint(r){
   }
   return {x:MAP_W/2,y:MAP_H/2};
 }
-// open an alien portal that will birth one enemy (chosen from the level roster)
+// open an alien portal that births the next queued enemy of this round
 function openSpawnPortal(){
-  const t=pickEnemyType(level+1);
+  const t=roundQueue.shift(); if(!t) return;
   const er=KIND[t.kind].r*(t.elite?ELITE.rMul:1);
   const pt=findSpawnPoint(er);
   portals.push({ x:pt.x, y:pt.y, kind:t.kind, elite:t.elite, er:er,
@@ -966,7 +1003,8 @@ function effectiveWeapon(key){
 
 let level, boss, bossSpawned, state;
 let enemies=[], bullets=[], eBullets=[], particles=[], pickups=[];
-let enemiesPending=0;  // remaining enemies to trickle in this level (simultaneous cap system)
+let roundQueue=[];     // remaining enemies (specs) still to spawn this round
+let spawnTimer=0;      // frames until the next portal may open (paces spawning)
 let portals=[];        // alien spawn portals currently opening/closing
 const MAX_PARTICLES=300;
 // adaptive graphics quality (auto-scales with measured FPS for mid-range Android)
@@ -996,7 +1034,7 @@ function makePlayer(id,isLocal,colorIdx,name){
   return {id, isLocal:!!isLocal, color:PLAYER_COLORS[(colorIdx||0)%PLAYER_COLORS.length],
     name: name||('P'+((colorIdx||0)+1)),
     char: isLocal ? selectedChar : 'soldier',
-    x:MAP_W/2, y:MAP_H/2, r:16, hp:100, maxHp:100, speed:3.39, fireCD:0, dmg:1, /* 4.52 * 0.75 → 25% slower */
+    x:MAP_W/2, y:MAP_H/2, r:16, hp:100, maxHp:100, speed:2.54, fireCD:0, dmg:1, /* slowed 25% again for tactical pacing (was 3.39) */
     shield:0, maxShield:100, /* absorbs damage before health; only gained from shield vests */
     dead:false, out:false, lives:1, invuln:0, aim:-Math.PI/2, flash:0, weapon:isLocal?(equippedWeapon||'pistol'):'pistol',
     input:{mx:0,my:0,atk:false}};
@@ -1518,12 +1556,12 @@ function startLevel(idx, fresh){
     // brief grace so portals opening on top of you aren't an instant hit (no heal, no move)
     players.forEach(p=>{ if(!p.out) p.invuln=Math.max(p.invuln||0,40); });
   }
-  // open spawn portals up to the simultaneous cap; the rest trickle in as enemies die
-  const total=cfg.enemies;
-  const cap=levelMaxAlive(idx+1);
-  const initial=Math.min(total, cap);
-  for(let i=0;i<initial;i++) openSpawnPortal();
-  enemiesPending=total-initial;
+  // build this round's hand-crafted roster (≤10) and open a small opening burst;
+  // the rest trickle in through portals on a measured cadence
+  roundQueue = buildRoundRoster(idx+1);
+  spawnTimer = SPAWN_INTERVAL;
+  const burst=Math.min(roundQueue.length, 3);
+  for(let i=0;i<burst;i++) openSpawnPortal();
   // health pickups
   const hCount = 1; // health pickups halved per round
   for(let i=0;i<hCount;i++){
@@ -1539,13 +1577,26 @@ function startLevel(idx, fresh){
   updateHUD();
 }
 
+// Pickups are validated before placement: always inside the arena, never on/in
+// an obstacle, and biased near a player so they're visible and reachable.
 function spawnPickup(kind, weapon){
-  let x,y,d;
-  do{ x=120+Math.random()*(MAP_W-240); y=120+Math.random()*(MAP_H-240);
-      d=Math.hypot(x-MAP_W/2,y-MAP_H/2);
-  }while(d<260);
-  const r = isGoldenWeapon(weapon) ? 24 : 16; // golden weapon crates are bigger so they stand out
-  return {x,y,r,kind,weapon,bob:Math.random()*Math.PI*2};
+  const r = isGoldenWeapon(weapon) ? 24 : 16;
+  const ref=alivePlayers()[0]||{x:MAP_W/2,y:MAP_H/2};
+  const ok=(x,y)=> x>=90 && y>=90 && x<=MAP_W-90 && y<=MAP_H-90 && !obstacleAt(x,y,r+20);
+  // 1) prefer a spot near the player (visible + reachable), not point-blank
+  const vis=Math.min(380, Math.min(VW||900,VH||500)*0.45);
+  for(let k=0;k<40;k++){
+    const ang=Math.random()*Math.PI*2, dist=150+Math.random()*vis;
+    const x=Math.max(90,Math.min(MAP_W-90, ref.x+Math.cos(ang)*dist));
+    const y=Math.max(90,Math.min(MAP_H-90, ref.y+Math.sin(ang)*dist));
+    if(ok(x,y)) return {x,y,r,kind,weapon,bob:Math.random()*Math.PI*2};
+  }
+  // 2) fallback: any valid open spot on the map
+  for(let k=0;k<60;k++){
+    const x=90+Math.random()*(MAP_W-180), y=90+Math.random()*(MAP_H-180);
+    if(ok(x,y)) return {x,y,r,kind,weapon,bob:Math.random()*Math.PI*2};
+  }
+  return {x:MAP_W/2,y:MAP_H/2,r,kind,weapon,bob:Math.random()*Math.PI*2};
 }
 
 // a boss caps every 5th level (levels 5,10,...,50 → indices 4,9,...,49)
@@ -1741,7 +1792,7 @@ function update(){
       p.y=Math.max(p.r,Math.min(MAP_H-p.r,p.y));
       // walk cycle: advance step phase while moving, ease the amount in/out when idle
       p.walkAmt = (p.walkAmt||0) + ((mm>0?1:0) - (p.walkAmt||0))*0.18;
-      if(mm>0){ p.walkPhase = ((p.walkPhase||0) + 0.32) % (Math.PI*2); p.moveAng = Math.atan2(nmy,nmx); }
+      if(mm>0){ p.walkPhase = ((p.walkPhase||0) + 0.24) % (Math.PI*2); p.moveAng = Math.atan2(nmy,nmx); }
       // manual aim: local player uses mouse or right joystick; remote players use snapshot/network aim
       if(p.isLocal){
         const aimJoyActive = aimJoy.active && Math.hypot(aimJoy.dx,aimJoy.dy)>8;
@@ -1762,8 +1813,8 @@ function update(){
         for(let k=0;k<w.pellets;k++){
           const off = w.pellets>1 ? (k-(w.pellets-1)/2)*(w.spread/Math.max(1,w.pellets-1)) : 0;
           const a = base + off + (Math.random()-0.5)*(w.spread*0.15);
-          bullets.push({x:p.x,y:p.y,vx:Math.cos(a)*w.speed,vy:Math.sin(a)*w.speed,
-            r:w.bulletR||5, dmg:w.dmg, life:w.bulletLife||80, color:w.color,
+          bullets.push({x:p.x,y:p.y,vx:Math.cos(a)*w.speed*0.75,vy:Math.sin(a)*w.speed*0.75,
+            r:w.bulletR||5, dmg:w.dmg, life:Math.round((w.bulletLife||80)/0.75), color:w.color,
             pierce:w.pierce, special:w.special, hitList:w.pierce?[]:null});
         }
         p.fireCD=w.fireRate; p.flash=5;
@@ -1809,7 +1860,7 @@ function update(){
       const a = tp ? Math.atan2(tp.y-e.y,tp.x-e.x) : 0;
       const dist = tp ? Math.hypot(tp.x-e.x,tp.y-e.y) : 1e9;
       if(e.boss){
-        e.x+=Math.cos(a)*e.speed; e.y+=Math.sin(a)*e.speed;
+        e.x+=Math.cos(a)*e.speed*0.75; e.y+=Math.sin(a)*e.speed*0.75;
         e.fireCD--;
         // only attack when the player is within the SAME range the player can hit it
         if(e.fireCD<=0 && dist<=attackRange()){
@@ -1819,7 +1870,7 @@ function update(){
             let ang;
             if(e.pattern===2) ang=(k/bn)*Math.PI*2;
             else ang=a+(k-bn/2)*spread*0.2;
-            eBullets.push({x:e.x,y:e.y,vx:Math.cos(ang)*4.5,vy:Math.sin(ang)*4.5,r:6,life:140,color:e.color});
+            eBullets.push({x:e.x,y:e.y,vx:Math.cos(ang)*3.4,vy:Math.sin(ang)*3.4,r:6,life:186,color:e.color});
           }
           e.fireCD=e.fireRate;
         }
@@ -1840,7 +1891,7 @@ function update(){
         e.fireCD--;
         // only attack when the player is within the SAME range the player can hit it
         if(dist<=R && Math.random()<e.shoot && e.fireCD<=0){
-          eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*4,vy:Math.sin(a)*4,r:5,life:120,color:'#c97cff'});
+          eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*3,vy:Math.sin(a)*3,r:5,life:160,color:'#c97cff'});
           e.fireCD=40;
         }
       }
@@ -1904,17 +1955,16 @@ function update(){
     // animate alien spawn portals (they birth the enemies)
     updatePortals();
 
-    // open reinforcement portals up to the simultaneous cap, then handle level end
+    // open reinforcement portals on a measured cadence (≤10 alive), then handle level end
     if(!bossSpawned){
       const aliveMinions=enemies.filter(e=>!e.boss).length;
-      if(enemiesPending>0){
-        const cap=levelMaxAlive(level+1);
-        let guard=3;                                  // at most 3 new portals per frame (smooth)
-        while(enemiesPending>0 && inFlightCount()<cap && guard-->0){
-          openSpawnPortal(); enemiesPending--;
+      if(roundQueue.length>0){
+        if(spawnTimer>0) spawnTimer--;
+        if(spawnTimer<=0 && inFlightCount()<levelMaxAlive(level+1)){
+          openSpawnPortal(); spawnTimer=SPAWN_INTERVAL;   // one new enemy at a time, paced
         }
       } else if(aliveMinions===0 && portals.length===0){
-        // every minion defeated AND no portals still birthing: boss or clear
+        // every queued enemy defeated AND no portals still birthing: boss or clear
         if(levelHasBoss(level)) spawnBoss();
         else levelClear();
       }
