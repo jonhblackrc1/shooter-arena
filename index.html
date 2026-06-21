@@ -763,7 +763,8 @@ function makeEnemy(kind, elite, cfg, x, y){
   hp=Math.max(1, Math.round(hp));
   const e={ x, y, r:Math.round(r), hp, maxHp:hp, speed:spd, kind, elite:!!elite,
             boss:false, melee:(kind==='melee'), dmg, score, coin, faceAng:0,
-            wob:Math.random()*Math.PI*2, fireCD:Math.random()*60, astate:'chase', atimer:0, struck:false };
+            wob:Math.random()*Math.PI*2, fireCD:Math.random()*60, astate:'chase', atimer:0, struck:false,
+            flank:(Math.random()*2-1)*0.6, reflank:0, repos:0 };  // per-enemy movement variation
   if(kind==='ranged'){ e.shoot=cfg.eShoot; e.strafe=(Math.random()<0.5?1:-1); }
   if(kind==='charger'){ e.cstate='roam'; e.ctimer=0; e.cdx=0; e.cdy=0; e.chargeDist=0; }
   return e;
@@ -851,7 +852,7 @@ function openSpawnPortal(){
   const er=KIND[t.kind].r*(t.elite?ELITE.rMul:1);
   const pt=findSpawnPoint(er);
   portals.push({ x:pt.x, y:pt.y, kind:t.kind, elite:t.elite, er:er,
-    t:0, open:30, hold:12, close:18, phase:'open', spawned:false, rot:Math.random()*6.28,
+    t:0, open:90, hold:20, close:24, phase:'open', spawned:false, rot:Math.random()*6.28,  // +1s open: time to read the threat
     // Mars palette: molten lava tones (no alien purple) — a fiery black-hole rift
     hue: t.elite?'#ffd24d':(t.kind==='charger'?'#ff8a2a':(t.kind==='melee'?'#ff5a2a':'#ff7a1a')) });
   sfx('portal');
@@ -900,6 +901,24 @@ function drawPortals(){
     // black-hole core (dark void the enemy emerges from)
     ctx.globalAlpha=0.96*s; ctx.fillStyle='#070302'; ctx.beginPath(); ctx.arc(0,0,R*0.44,0,Math.PI*2); ctx.fill();
     ctx.globalAlpha=1; ctx.restore();
+    // ---- threat indicator: a type-coloured icon (+ crown for Elite) so the
+    //      player can read what's emerging and plan before it lands ----
+    if(P.phase!=='close'){
+      const tc = P.kind==='melee'?'#ff5a4a':(P.kind==='charger'?'#ffae42':'#b06af0');
+      ctx.save(); ctx.translate(x, y - P.er*1.7 - 18); ctx.globalAlpha=Math.min(1,s*1.4);
+      if(P.elite){
+        ctx.fillStyle='#ffd24d';
+        ctx.beginPath(); ctx.moveTo(-9,-12); ctx.lineTo(-5,-18); ctx.lineTo(0,-12); ctx.lineTo(5,-18); ctx.lineTo(9,-12); ctx.lineTo(7,-8); ctx.lineTo(-7,-8); ctx.closePath(); ctx.fill(); // crown
+        ctx.globalAlpha=Math.min(1,s*0.7); ctx.strokeStyle='#ffd24d'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,0,13,0,6.28); ctx.stroke(); ctx.globalAlpha=Math.min(1,s*1.4);
+      }
+      ctx.fillStyle='rgba(8,6,14,0.85)'; ctx.beginPath(); ctx.arc(0,0,10,0,6.28); ctx.fill();
+      ctx.strokeStyle=tc; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,0,10,0,6.28); ctx.stroke();
+      ctx.fillStyle=tc;
+      if(P.kind==='melee'){ ctx.beginPath(); ctx.moveTo(-4,-3); ctx.lineTo(4,-3); ctx.lineTo(0,5); ctx.closePath(); ctx.fill(); }              // fang
+      else if(P.kind==='charger'){ ctx.beginPath(); ctx.moveTo(-5,3); ctx.lineTo(0,-4); ctx.lineTo(5,3); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-5,6); ctx.lineTo(0,-1); ctx.lineTo(5,6); ctx.stroke(); } // charge chevrons
+      else { ctx.beginPath(); ctx.arc(0,0,2.2,0,6.28); ctx.fill(); ctx.beginPath(); ctx.arc(0,0,6,0,6.28); ctx.stroke(); }                       // target
+      ctx.restore();
+    }
   }
 }
 
@@ -957,7 +976,11 @@ function updateMeleeEnemy(e, tp, a, dist){
   } else if(e.astate==='recover'){
     if(--e.atimer<=0) e.astate='chase';          // cooldown after the swing
   } else {                                        // chase
-    steerToward(e, a, e.speed);                   // avoids crates, separates from peers
+    // flank: approach from an offset angle so the pack surrounds the player instead
+    // of dogpiling one point; the offset fades to 0 as they close in for the strike
+    if((e.reflank=(e.reflank||0)-1)<=0){ e.flank=(Math.random()*2-1)*0.7; e.reflank=120+Math.random()*120; }
+    const flankA = a + e.flank*Math.min(1, dist/320);
+    steerToward(e, flankA, e.speed);              // + obstacle avoidance & separation
     if(tp && dist <= reach){ e.astate='windup'; e.atimer=16; }
   }
 }
@@ -965,7 +988,9 @@ function updateMeleeEnemy(e, tp, a, dist){
 // ---- Charger: roam to medium range → wind-up (telegraph) → straight-line dash.
 //      Hit = heavy damage; miss/overshoot/wall = stunned ~1s. ----
 function updateCharger(e, tp, a, dist){
-  const DETECT=420, MAXDIST=560;
+  // Charge only when it has CLOSED IN to ~half its detection range — it must
+  // approach first and can never charge from across the map.
+  const DETECT_MAX=700, CHARGE_RANGE=DETECT_MAX*0.5, MAXDIST=560;
   if(e.cstate==='windup'){
     e.faceAng=a;                                  // tracks the player while charging up
     if(--e.ctimer<=0){ e.cstate='charge'; e.cdx=Math.cos(a); e.cdy=Math.sin(a); e.chargeDist=0; e.struck=false; if(tp&&tp.isLocal) sfx('shoot'); }
@@ -983,10 +1008,10 @@ function updateCharger(e, tp, a, dist){
     }
   } else if(e.cstate==='stunned'){
     if(--e.ctimer<=0) e.cstate='roam';
-  } else {                                         // roam — approach to medium range, then wind up
+  } else {                                         // roam — walk toward the player, wind up only once close
     e.faceAng=a;
     steerToward(e, a, e.speed);                     // avoids crates, separates from peers
-    if(tp && dist <= DETECT && dist > e.r+tp.r+20){ e.cstate='windup'; e.ctimer=48+Math.floor(Math.random()*24); }
+    if(tp && dist <= CHARGE_RANGE && dist > e.r+tp.r+24){ e.cstate='windup'; e.ctimer=56+Math.floor(Math.random()*22); }
   }
 }
 
@@ -1739,7 +1764,9 @@ function startLevel(idx, fresh){
   // the rest trickle in through portals on a measured cadence
   roundQueue = buildRoundRoster(idx+1);
   spawnTimer = SPAWN_INTERVAL;
-  const burst=Math.min(roundQueue.length, 3);
+  // open a bigger opening burst (up to 5) so the player can SEE the wave forming
+  // as portals and read the threats before combat starts
+  const burst=Math.min(roundQueue.length, 5);
   for(let i=0;i<burst;i++) openSpawnPortal();
   // health pickups
   const hCount = 1; // health pickups halved per round
@@ -2058,20 +2085,25 @@ function update(){
       } else if(e.kind==='melee' || e.melee){
         updateMeleeEnemy(e, tp, a, dist);
       } else {
-        // ranged: only retreat when the player gets VERY close, otherwise tend to close in
-        const R=attackRange();
-        const tooClose=R*0.35;
-        if(dist < tooClose){
-          steerToward(e, a+Math.PI, e.speed);   // very close → back off (still avoids crates)
-        } else {
-          steerToward(e, a, e.speed);           // otherwise approach the player
-        }
+        // RANGED kiter: holds a firing distance, pressures from afar, retreats if
+        // crowded, strafes to keep a clean line of fire — it does NOT chase.
+        const FIRE=720, BAND_MAX=600, BAND_MIN=360;
         e.faceAng=a;
+        if(dist > BAND_MAX){
+          steerToward(e, a, e.speed*0.9);                 // close in until within firing range
+        } else if(dist < BAND_MIN){
+          steerToward(e, a+Math.PI, e.speed);             // too close → back off / reposition
+        } else {
+          // in the kite band: strafe sideways to dodge and keep a clear shot
+          if((e.repos=(e.repos||0)-1)<=0){ e.strafe=-(e.strafe||1); e.repos=70+Math.floor(Math.random()*70); }
+          steerToward(e, a + (e.strafe>0?1.35:-1.35), e.speed*0.7);
+        }
         e.fireCD--;
-        // only attack when the player is within the SAME range the player can hit it
-        if(dist<=R && Math.random()<e.shoot && e.fireCD<=0){
-          eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*3,vy:Math.sin(a)*3,r:5,life:160,color:'#c97cff'});
-          e.fireCD=40;
+        // line of fire: don't shoot through a crate (encourages repositioning)
+        const lx=e.x+Math.cos(a)*Math.min(dist*0.6,200), ly=e.y+Math.sin(a)*Math.min(dist*0.6,200);
+        if(dist<=FIRE && e.fireCD<=0 && !obstacleAt(lx,ly,4)){
+          eBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*3,vy:Math.sin(a)*3,r:5,life:200,color:'#c97cff'});
+          e.fireCD=46;                                    // steady pressure from range
         }
       }
       // keep enemies inside the arena (kiters can back into the edge)
