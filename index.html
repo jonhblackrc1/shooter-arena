@@ -59,7 +59,7 @@
   .setlabel { color:#e8e6f5; font-size:16px; }
   .settoggle { min-width:66px; padding:8px 16px; border-radius:20px; border:2px solid #6a5a8c; background:transparent; color:#9b94c4; font-weight:bold; font-size:14px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
   .settoggle.on { background:linear-gradient(135deg,#5aff8a,#42c8ff); color:#0b0d18; border-color:transparent; }
-  #charGrid { display:block; width:100%; margin:2px 0; }
+  #charGrid, #weaponPaneList { display:block; width:100%; height:100%; }
   .charcard { background:rgba(120,160,90,0.07); border:2px solid rgba(120,160,90,0.25); border-radius:14px; padding:16px 8px; text-align:center; cursor:pointer; -webkit-tap-highlight-color:transparent; }
   .charcard:active { transform:scale(0.96); }
   .charcard.sel { border-color:#5aff8a; background:rgba(90,255,138,0.12); box-shadow:0 0 16px rgba(90,255,138,0.25); }
@@ -251,19 +251,19 @@
   .modeIcon { font-size:34px; line-height:1; flex-shrink:0; }
   .modeName { color:#f5d77a; font-weight:bold; font-size:15px; letter-spacing:1px; }
   .modeDesc { font-size:12px; color:#9b94c4; margin-top:2px; line-height:1.5; }
-  /* ============ CAROUSEL (weapons & characters) ============ */
-  .carousel { display:flex; flex-direction:column; align-items:center; gap:10px; padding:4px 2px 8px; width:100%; }
-  .carInfo { display:flex; flex-direction:column; align-items:center; gap:9px; width:100%; }
+  /* ============ CAROUSEL (weapons & characters) — fills the whole pane ============ */
+  .carousel { display:flex; flex-direction:column; align-items:center; gap:10px; padding:2px; width:100%; height:100%; }
+  .carInfo { display:flex; flex-direction:column; align-items:center; gap:9px; width:100%; flex-shrink:0; }
   .previewStage {
-    position:relative; width:100%; max-width:min(86vw,440px); border-radius:18px; overflow:hidden;
+    position:relative; width:100%; max-width:none; flex:1 1 auto; min-height:110px; border-radius:18px; overflow:hidden;
     display:flex; align-items:center; justify-content:center;
-    background:radial-gradient(circle at 50% 42%, rgba(90,80,160,0.20), rgba(10,8,18,0.78));
-    border:1px solid rgba(176,124,255,0.30);
-    box-shadow:inset 0 0 28px rgba(120,90,200,0.18), 0 6px 22px rgba(0,0,0,0.4);
+    background:radial-gradient(circle at 50% 42%, rgba(90,80,160,0.20), rgba(10,8,18,0.82));
+    border:1px solid rgba(176,124,255,0.32);
+    box-shadow:inset 0 0 32px rgba(120,90,200,0.2), 0 6px 22px rgba(0,0,0,0.42);
   }
-  /* futuristic corner brackets on the preview frame */
-  .previewStage::after {
-    content:''; position:absolute; inset:7px; border-radius:12px; pointer-events:none;
+  /* futuristic corner brackets — shared by every menu panel for a consistent tech look */
+  .previewStage::after, #paneRanking .board::after, .modeCard::after {
+    content:''; position:absolute; inset:7px; border-radius:12px; pointer-events:none; z-index:2;
     background:
       linear-gradient(90deg,#caa3ff 0 18px,transparent 18px) top left/22px 2px no-repeat,
       linear-gradient(0deg,#caa3ff 0 18px,transparent 18px) top left/2px 22px no-repeat,
@@ -287,7 +287,7 @@
     animation:scan 6s linear infinite;
   }
   @keyframes scan { from{ background-position:0 0; } to{ background-position:0 40px; } }
-  .bigPreview { display:block; width:100%; max-width:420px; height:auto; }
+  .bigPreview { display:block; width:auto; height:auto; max-width:min(88%,460px); max-height:92%; }
   .navArrow {
     position:absolute; top:50%; transform:translateY(-50%); z-index:2;
     width:38px; height:38px; border-radius:50%; padding:0; line-height:1;
@@ -335,39 +335,47 @@
     transition:all .2s; position:relative; }
   .dot.on { background:#f5d77a; box-shadow:0 0 8px rgba(245,215,122,0.7); transform:scale(1.25); }
   .dot.eq::after { content:''; position:absolute; inset:-3px; border-radius:50%; border:1px solid #5aff8a; }
-  /* ---- vertical card: image → name → description → (stats) → button → dots ---- */
-  .carousel { max-width:480px; margin:0 auto; }
+  /* ---- vertical card fills the full pane (image hero → name → desc → stats → button → dots) ---- */
   .carInfo { gap:8px; }
-  /* ---- Modes & Ranking: same glassy / glowing identity as the carousels ---- */
-  #modesList, #paneRanking .board { width:100%; max-width:680px; margin:0 auto; }
+  /* ---- Modes: cards grow to fill the whole pane (tech panel grid) ---- */
+  #paneModes { display:flex; flex-direction:column; }
+  #modesList { width:100%; flex:1 1 auto; min-height:0; display:flex; flex-direction:column; gap:10px; margin-bottom:10px; }
+  #paneModes .menuPlayBtn { margin-top:0; flex-shrink:0; }  /* modesList flex:1 already fills, so no auto margin */
   .modeCard {
-    background:linear-gradient(135deg, rgba(176,124,255,0.08), rgba(255,255,255,0.03));
-    border:1px solid rgba(176,124,255,0.22); border-radius:16px; padding:16px; margin-bottom:11px;
-    box-shadow:0 3px 14px rgba(0,0,0,0.28), inset 0 0 22px rgba(120,90,200,0.08); gap:14px;
+    flex:1 1 0; min-height:0; margin-bottom:0; position:relative; overflow:hidden; gap:16px; padding:0 20px;
+    background:linear-gradient(135deg, rgba(176,124,255,0.09), rgba(255,255,255,0.03));
+    border:1px solid rgba(176,124,255,0.24); border-radius:16px;
+    box-shadow:0 3px 14px rgba(0,0,0,0.28), inset 0 0 26px rgba(120,90,200,0.1);
   }
-  .modeCard .modeIcon { width:50px; height:50px; display:flex; align-items:center; justify-content:center;
-    border-radius:13px; background:rgba(255,255,255,0.05); border:1px solid rgba(176,124,255,0.25);
-    box-shadow:inset 0 0 14px rgba(120,90,200,0.18); font-size:28px; }
-  .modeName { font-size:16px; }
+  .modeCard .modeIcon { width:54px; height:54px; display:flex; align-items:center; justify-content:center;
+    border-radius:14px; background:rgba(255,255,255,0.05); border:1px solid rgba(176,124,255,0.25);
+    box-shadow:inset 0 0 14px rgba(120,90,200,0.18); font-size:30px; flex-shrink:0; }
+  .modeName { font-size:17px; }
   .modeDesc { font-size:12.5px; }
-  .rankHeader { color:#caa3ff; font-size:13px; letter-spacing:3px; margin:2px 0 14px;
-    position:relative; padding-bottom:10px; }
+  /* ---- Ranking: one framed tech panel filling the pane, rows distributed ---- */
+  #paneRanking { display:flex; flex-direction:column; }
+  .rankHeader { flex-shrink:0; color:#caa3ff; font-size:13px; letter-spacing:3px; margin:0 0 10px;
+    position:relative; padding-bottom:9px; }
   .rankHeader::after { content:''; position:absolute; left:50%; bottom:0; transform:translateX(-50%);
     width:120px; height:2px; background:linear-gradient(90deg,transparent,#caa3ff,transparent); }
+  #paneRanking .board { width:100%; flex:1 1 auto; min-height:0; position:relative;
+    display:flex; flex-direction:column; gap:8px; padding:14px; border-radius:18px; overflow:hidden;
+    background:radial-gradient(circle at 50% 26%, rgba(90,80,160,0.16), rgba(10,8,18,0.66));
+    border:1px solid rgba(176,124,255,0.3); box-shadow:inset 0 0 30px rgba(120,90,200,0.16), 0 6px 22px rgba(0,0,0,0.42); }
   #paneRanking .board .row {
-    display:flex; align-items:center; gap:6px; padding:12px 14px; margin-bottom:8px; border-radius:14px;
-    background:linear-gradient(135deg, rgba(176,124,255,0.07), rgba(255,255,255,0.025));
-    border:1px solid rgba(176,124,255,0.18); box-shadow:0 2px 12px rgba(0,0,0,0.25);
+    flex:1 1 0; min-height:0; max-height:70px; display:flex; align-items:center; gap:6px; padding:0 16px; border-radius:12px;
+    background:linear-gradient(135deg, rgba(176,124,255,0.08), rgba(255,255,255,0.03));
+    border:1px solid rgba(176,124,255,0.18);
   }
-  #paneRanking .board .row:nth-child(even){ background:linear-gradient(135deg, rgba(176,124,255,0.07), rgba(255,255,255,0.025)); }
-  #paneRanking .board .rank { width:30px; height:30px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
-    border-radius:50%; font-size:14px; font-weight:900; color:#0b0d18; background:rgba(176,124,255,0.4); }
+  #paneRanking .board .rank { width:32px; height:32px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+    border-radius:50%; font-size:15px; font-weight:900; color:#0b0d18; background:rgba(176,124,255,0.4); }
   #paneRanking .board .row:nth-child(1) .rank { background:linear-gradient(135deg,#ffe08a,#ffb13a); box-shadow:0 0 12px rgba(255,200,80,0.6); }
   #paneRanking .board .row:nth-child(2) .rank { background:linear-gradient(135deg,#eef0f6,#b9bfcc); }
   #paneRanking .board .row:nth-child(3) .rank { background:linear-gradient(135deg,#f0b884,#cf8a52); }
-  #paneRanking .board .nm { flex:1; font-size:15px; font-weight:bold; color:#e8e6f5; padding:0 10px; }
-  #paneRanking .board .sc { font-size:15px; font-weight:900; color:#f5d77a; text-shadow:0 0 10px rgba(245,215,122,0.3); }
-  #paneRanking .board .empty { color:#9b94c4; text-align:center; padding:20px; }
+  #paneRanking .board .nm { flex:1; font-size:15px; font-weight:bold; color:#e8e6f5; padding:0 12px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #paneRanking .board .sc { font-size:16px; font-weight:900; color:#f5d77a; text-shadow:0 0 10px rgba(245,215,122,0.3); }
+  #paneRanking .board .empty { margin:auto; color:#9b94c4; text-align:center; padding:20px; }
   /* hide the centre title when the top bar gets tight, so stats + tabs always fit */
   @media (max-width:620px){
     .menuTitle { display:none; }
@@ -375,11 +383,10 @@
   @media (max-height:430px){
     .menuShell { gap:8px; padding-top:calc(env(safe-area-inset-top,0px) + 8px); }
     .menuPlayBtn { padding:13px; font-size:18px; }
-    /* compact the vertical card so the whole stack fits in short landscape (no scroll) */
+    /* compact the content so the whole pane-filling stack fits in short landscape */
     .menuPane { padding:3px 4px 4px; }
-    .carousel { gap:4px; padding-bottom:0; }
+    .carousel { gap:5px; padding-bottom:0; }
     .carInfo { gap:5px; }
-    .previewStage { max-width:300px; }
     .itemName { font-size:16px; letter-spacing:1.5px; }
     .itemDesc { font-size:11px; line-height:1.35; }
     .statBars { gap:4px; }
@@ -388,9 +395,10 @@
     .itemFooter { min-height:30px; }
     .carBtn { padding:8px 24px; font-size:14px; }
     .dots { margin-top:0; }
-    .modeCard { padding:11px 13px; margin-bottom:8px; }
-    .modeCard .modeIcon { width:42px; height:42px; font-size:24px; }
-    #paneRanking .board .row { padding:9px 12px; margin-bottom:6px; }
+    #modesList { gap:8px; }
+    .modeCard { padding:0 14px; gap:12px; }
+    .modeCard .modeIcon { width:44px; height:44px; font-size:25px; }
+    #paneRanking .board { padding:10px; gap:6px; }
   }
   /* ===== "Rotate your device" prompt — the game is meant for landscape ===== */
   #rotateHint {
