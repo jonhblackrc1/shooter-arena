@@ -59,7 +59,7 @@
   .setlabel { color:#e8e6f5; font-size:16px; }
   .settoggle { min-width:66px; padding:8px 16px; border-radius:20px; border:2px solid #6a5a8c; background:transparent; color:#9b94c4; font-weight:bold; font-size:14px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
   .settoggle.on { background:linear-gradient(135deg,#5aff8a,#42c8ff); color:#0b0d18; border-color:transparent; }
-  #charGrid { display:grid; grid-template-columns:1fr 1fr; gap:12px; width:100%; margin:4px 0; }
+  #charGrid { display:block; width:100%; margin:2px 0; }
   .charcard { background:rgba(120,160,90,0.07); border:2px solid rgba(120,160,90,0.25); border-radius:14px; padding:16px 8px; text-align:center; cursor:pointer; -webkit-tap-highlight-color:transparent; }
   .charcard:active { transform:scale(0.96); }
   .charcard.sel { border-color:#5aff8a; background:rgba(90,255,138,0.12); box-shadow:0 0 16px rgba(90,255,138,0.25); }
@@ -256,6 +256,72 @@
   .modeIcon { font-size:34px; line-height:1; flex-shrink:0; }
   .modeName { color:#f5d77a; font-weight:bold; font-size:15px; letter-spacing:1px; }
   .modeDesc { font-size:12px; color:#9b94c4; margin-top:2px; line-height:1.5; }
+  /* ============ CAROUSEL (weapons & characters) ============ */
+  .carousel { display:flex; flex-direction:column; align-items:center; gap:9px; padding:4px 2px 8px;
+    animation:carIn .3s cubic-bezier(.2,.7,.3,1) both; }
+  @keyframes carIn { from{ opacity:0; transform:translateY(10px) scale(.985); } to{ opacity:1; transform:none; } }
+  .previewStage {
+    position:relative; width:100%; max-width:330px; border-radius:18px; overflow:hidden;
+    display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(circle at 50% 42%, rgba(90,80,160,0.18), rgba(10,8,18,0.55));
+    border:1px solid rgba(176,124,255,0.28);
+    box-shadow:inset 0 0 28px rgba(120,90,200,0.18), 0 6px 22px rgba(0,0,0,0.35);
+  }
+  .previewStage.gold { border-color:rgba(255,210,77,0.45); box-shadow:inset 0 0 30px rgba(255,200,80,0.18),0 6px 22px rgba(0,0,0,0.4); }
+  .previewStage::before {  /* holographic scanline shimmer */
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background:repeating-linear-gradient(0deg, rgba(255,255,255,0.035) 0 2px, transparent 2px 5px);
+    mix-blend-mode:overlay; animation:scan 6s linear infinite;
+  }
+  @keyframes scan { from{ background-position:0 0; } to{ background-position:0 40px; } }
+  .bigPreview { display:block; width:100%; max-width:300px; height:auto; }
+  .navArrow {
+    position:absolute; top:50%; transform:translateY(-50%); z-index:2;
+    width:38px; height:38px; border-radius:50%; padding:0; line-height:1;
+    background:rgba(20,14,34,0.55); border:1.5px solid rgba(176,124,255,0.5);
+    color:#e8e6f5; font-size:24px; cursor:pointer; -webkit-tap-highlight-color:transparent;
+    backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); transition:transform .15s, background .2s, box-shadow .2s;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .navArrow.left{ left:8px; } .navArrow.right{ right:8px; }
+  .navArrow:hover { background:rgba(176,124,255,0.3); box-shadow:0 0 14px rgba(176,124,255,0.5); }
+  .navArrow:active { transform:translateY(-50%) scale(0.88); }
+  .rarityBadge {
+    position:absolute; top:8px; left:8px; z-index:2; font-size:10px; font-weight:900; letter-spacing:1px;
+    padding:3px 9px; border-radius:20px; border:1px solid currentColor;
+    background:rgba(8,6,14,0.55); backdrop-filter:blur(4px); text-shadow:0 0 8px currentColor;
+  }
+  .stateBadge {
+    position:absolute; top:8px; right:8px; z-index:2; font-size:9px; font-weight:bold; letter-spacing:0.5px;
+    padding:3px 8px; border-radius:20px; background:rgba(8,6,14,0.55); backdrop-filter:blur(4px);
+  }
+  .stateBadge.owned { color:#5aff8a; border:1px solid rgba(90,255,138,0.5); }
+  .stateBadge.locked { color:#ff7a7a; border:1px solid rgba(255,122,122,0.5); }
+  .itemName { font-size:20px; font-weight:900; letter-spacing:2px; color:#f5d77a; text-align:center;
+    text-shadow:0 0 14px rgba(245,215,122,0.35); }
+  .itemDesc { font-size:12px; color:#9b94c4; text-align:center; line-height:1.5; margin-top:-3px; max-width:300px; }
+  .statBars { width:100%; max-width:300px; display:flex; flex-direction:column; gap:6px; margin-top:2px; }
+  .statRow { display:flex; align-items:center; gap:8px; }
+  .statLbl { width:78px; flex-shrink:0; font-size:10px; font-weight:bold; color:#9b94c4; letter-spacing:0.5px; }
+  .statBar { flex:1; height:8px; border-radius:6px; background:rgba(255,255,255,0.07); overflow:hidden; }
+  .statBar i { display:block; height:100%; border-radius:6px; transition:width .35s cubic-bezier(.4,0,.2,1);
+    box-shadow:0 0 8px currentColor; }
+  .itemFooter { display:flex; align-items:center; justify-content:center; gap:12px; min-height:42px; margin-top:2px; }
+  .carBtn {
+    padding:11px 30px; font-size:16px; font-weight:900; letter-spacing:1.5px; border-radius:14px; cursor:pointer;
+    color:#0b0d18; background:linear-gradient(135deg,#f5d77a,#caa3ff); border:none;
+    box-shadow:0 0 20px rgba(202,163,255,0.5); -webkit-tap-highlight-color:transparent; transition:transform .15s;
+  }
+  .carBtn:active { transform:scale(0.95); }
+  .carBtn.off { opacity:0.45; background:linear-gradient(135deg,#6a6a7a,#4a4a5a); box-shadow:none; cursor:default; }
+  .okTag { color:#5aff8a; font-weight:900; font-size:15px; letter-spacing:2px; text-shadow:0 0 12px rgba(90,255,138,0.4); }
+  .priceTag { font-size:15px; font-weight:bold; color:#ffd24d; }
+  .priceTag.off { color:#7d77a3; }
+  .dots { display:flex; gap:7px; margin-top:2px; }
+  .dot { width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,0.18); cursor:pointer;
+    transition:all .2s; position:relative; }
+  .dot.on { background:#f5d77a; box-shadow:0 0 8px rgba(245,215,122,0.7); transform:scale(1.25); }
+  .dot.eq::after { content:''; position:absolute; inset:-3px; border-radius:50%; border:1px solid #5aff8a; }
   /* hide the centre title when the top bar gets tight, so stats + tabs always fit */
   @media (max-width:680px){
     .menuTitle { display:none; }
@@ -263,6 +329,16 @@
   @media (max-height:430px){
     .menuShell { gap:8px; padding-top:calc(env(safe-area-inset-top,0px) + 8px); }
     .menuPlayBtn { padding:13px; font-size:18px; }
+    /* compact the carousel so the action button stays visible in landscape */
+    .carousel { gap:5px; padding-bottom:4px; }
+    .previewStage { max-width:240px; }
+    .bigPreview { max-width:220px; }
+    .itemName { font-size:17px; letter-spacing:1.5px; }
+    .itemDesc { font-size:11px; }
+    .statBars { gap:4px; }
+    .statBar { height:7px; }
+    .itemFooter { min-height:34px; }
+    .carBtn { padding:9px 26px; font-size:15px; }
   }
   /* ===== "Rotate your device" prompt — the game is meant for landscape ===== */
   #rotateHint {
@@ -327,13 +403,13 @@
       </div>
       <div class="title menuTitle">SHOOTER ARENA</div>
       <div class="topRight">
-        <button class="fsBtn" id="fsBtn" aria-label="Pantalla completa">⛶</button>
         <div class="menuTabBar" id="menuTabBar">
           <button class="menuTab active" data-pane="0"><span class="tabIco">🦸</span><span class="tabTxt">CHARS</span></button>
           <button class="menuTab"        data-pane="1"><span class="tabIco">🔫</span><span class="tabTxt">WEAPONS</span></button>
           <button class="menuTab"        data-pane="2"><span class="tabIco">🎮</span><span class="tabTxt">MODES</span></button>
           <button class="menuTab"        data-pane="3"><span class="tabIco">🏆</span><span class="tabTxt">RANKING</span></button>
         </div>
+        <button class="fsBtn" id="fsBtn" aria-label="Pantalla completa">⛶</button>
       </div>
     </div>
 
@@ -1205,6 +1281,37 @@ function closeShop(){ shopScreen.classList.add('hidden'); startScreen.classList.
 // ---- Weapon shop (buy / equip) — renders inline inside WEAPONS tab pane ----
 const WEAPON_SHOP_ORDER=['pistol','rifle','ak','shotgun','smg','scar','goldshotgun'];
 
+// ---- Rarity + descriptions for the carousel UI ----
+const RARITY={ COMMON:'#9fb0c8', RARE:'#5ad1ff', EPIC:'#c77cff', LEGENDARY:'#ffd24d' };
+const WEAPON_META={
+  pistol:      {rarity:'COMMON',    desc:'Reliable sidearm — always ready.'},
+  rifle:       {rarity:'COMMON',    desc:'Balanced automatic rifle.'},
+  ak:          {rarity:'RARE',      desc:'Hard-hitting assault rifle.'},
+  shotgun:     {rarity:'RARE',      desc:'Close-range spread of 5 pellets.'},
+  smg:         {rarity:'COMMON',    desc:'Blazing fire rate, low recoil.'},
+  scar:        {rarity:'LEGENDARY', desc:'Golden piercing rifle — shreds rows.'},
+  goldshotgun: {rarity:'LEGENDARY', desc:'Golden devastation up close.'},
+};
+const CHAR_META={
+  soldier: {rarity:'COMMON',    desc:'Standard-issue Mars trooper.'},
+  fire:    {rarity:'EPIC',      desc:'Wreathed in living flame.'},
+  shark:   {rarity:'RARE',      desc:'Apex predator of the wastes.'},
+  white:   {rarity:'LEGENDARY', desc:'Elite WHITE OPS phantom.'},
+};
+// weapon stats as 0..100 bars (damage, fire rate, range, accuracy)
+function weaponStatPct(key){
+  const w=WEAPONS[key];
+  return {
+    dmg:  Math.round(Math.min(100, (w.dmg*(w.pellets||1))/14*100)),
+    rate: Math.round(Math.min(100, (1/w.fireRate)/0.2*100)),
+    range:Math.round(Math.min(100, (w.speed)/13*100)),
+    acc:  Math.round(Math.min(100, (1-(w.spread||0)/0.6)*100)),
+  };
+}
+// carousel view positions (which item is centred) — default to current selection
+let weaponViewIdx=Math.max(0, WEAPON_SHOP_ORDER.indexOf(equippedWeapon));
+let charViewIdx=Math.max(0, CHAR_ORDER.indexOf(selectedChar));
+
 function drawWeaponPreview(canvas, key){
   const pc=canvas.getContext('2d');
   const cw=canvas.width, ch=canvas.height;
@@ -1218,53 +1325,66 @@ function drawWeaponPreview(canvas, key){
   pc.restore();
 }
 
+// ===== WEAPONS carousel: big preview + live stats + arrows =====
 function renderWeaponShop(container){
   if(!container) container=document.getElementById('weaponPaneList');
   if(!container) return;
-  updateMenuHiscore(); // keep coin display fresh
-  let html='';
-  for(const key of WEAPON_SHOP_ORDER){
-    const w=WEAPONS[key], price=WEAPON_PRICES[key];
-    const owned=ownedWeapons.includes(key), equipped=equippedWeapon===key;
-    const canBuy=!owned&&money>=price, gold=isGoldenWeapon(key);
-    html+='<div class="wcard" style="'+(gold?'border-color:rgba(255,210,77,0.5);background:rgba(255,210,77,0.05);':'')+'">'+
-      '<div style="display:flex;align-items:center;gap:10px">'+
-        '<canvas id="wpr_'+key+'" width="90" height="56" style="border-radius:8px;flex-shrink:0;background:'+(gold?'#1e1a08':'#141220')+'"></canvas>'+
-        '<div style="flex:1;min-width:0">'+
-          '<div class="wname" style="'+(gold?'color:#ffd24d':'')+'">'+escapeHtml(w.name)+'</div>'+
-          '<div style="font-size:11px;color:#9b94c4;margin-top:3px;line-height:1.7">'+
-            'DMG <b style="color:#f5d77a">'+w.dmg.toFixed(1)+'</b> &nbsp;'+
-            'RATE <b style="color:#caa3ff">'+w.fireRate+'</b> &nbsp;'+
-            'SHOTS <b style="color:#5ad1ff">'+w.pellets+'</b>'+
-            (w.pierce?'&nbsp; PIERCE <b style="color:#ff9d4d">'+w.pierce+'</b>':'')+
-          '</div>'+
-        '</div>'+
+  updateMenuHiscore();
+  if(weaponViewIdx<0||weaponViewIdx>=WEAPON_SHOP_ORDER.length) weaponViewIdx=0;
+  const key=WEAPON_SHOP_ORDER[weaponViewIdx];
+  const w=WEAPONS[key], meta=WEAPON_META[key], price=WEAPON_PRICES[key];
+  const owned=ownedWeapons.includes(key), equipped=equippedWeapon===key;
+  const canBuy=!owned&&money>=price, gold=isGoldenWeapon(key);
+  const rc=RARITY[meta.rarity], st=weaponStatPct(key);
+  const bar=(label,pct,col)=>'<div class="statRow"><span class="statLbl">'+label+'</span><div class="statBar"><i style="width:'+pct+'%;background:'+col+'"></i></div></div>';
+  let footer;
+  if(equipped) footer='<span class="okTag">✓ EQUIPPED</span>';
+  else if(owned) footer='<button class="carBtn act" data-equip="'+key+'">EQUIP</button>';
+  else if(price===0) footer='<button class="carBtn act" data-buy="'+key+'">UNLOCK · FREE</button>';
+  else footer='<span class="priceTag'+(canBuy?'':' off')+'">🪙 '+price+'</span><button class="carBtn act'+(canBuy?'':' off')+'" data-buy="'+key+'"'+(canBuy?'':' disabled')+'>BUY</button>';
+  const stateBadge = owned?'<span class="stateBadge owned">UNLOCKED</span>':'<span class="stateBadge locked">🔒 LOCKED</span>';
+  const dots=WEAPON_SHOP_ORDER.map((k,i)=>'<span class="dot'+(i===weaponViewIdx?' on':'')+(equippedWeapon===k?' eq':'')+'" data-wdot="'+i+'"></span>').join('');
+  container.innerHTML=
+    '<div class="carousel" id="wpCarousel">'+
+      '<div class="previewStage'+(gold?' gold':'')+'">'+
+        '<button class="navArrow left" data-wnav="-1" aria-label="prev">‹</button>'+
+        '<canvas id="wpvBig" class="bigPreview" width="280" height="146"></canvas>'+
+        '<button class="navArrow right" data-wnav="1" aria-label="next">›</button>'+
+        '<span class="rarityBadge" style="color:'+rc+';border-color:'+rc+'">'+meta.rarity+'</span>'+
+        stateBadge+
       '</div>'+
-      '<div style="display:flex;gap:8px;margin-top:8px;align-items:center;justify-content:space-between">'+
-        (equipped
-          ? '<span style="color:#5aff8a;font-weight:bold;font-size:13px;letter-spacing:1px">✓ EQUIPPED</span><span></span>'
-          : owned
-            ? '<span></span><button class="ubuy" data-equip="'+key+'">EQUIP</button>'
-            : (price===0
-                ? '<span></span><button class="ubuy" data-buy="'+key+'">FREE</button>'
-                : '<span style="font-size:12px;color:'+(canBuy?'#ffd24d':'#7d77a3')+'">🪙 '+price+'</span>'+
-                  '<button class="ubuy'+(canBuy?'':' off')+'" data-buy="'+key+'"'+(canBuy?'':' disabled')+'>BUY</button>'
-              )
-        )+
-      '</div>'+
+      '<div class="itemName"'+(gold?' style="color:#ffd24d"':'')+'>'+escapeHtml(w.name)+'</div>'+
+      '<div class="itemDesc">'+meta.desc+'</div>'+
+      '<div class="statBars">'+bar('DAMAGE',st.dmg,'#ff7a5a')+bar('FIRE RATE',st.rate,'#caa3ff')+bar('RANGE',st.range,'#5ad1ff')+bar('ACCURACY',st.acc,'#5aff8a')+'</div>'+
+      '<div class="itemFooter">'+footer+'</div>'+
+      '<div class="dots">'+dots+'</div>'+
     '</div>';
-  }
-  container.innerHTML=html;
-  for(const key of WEAPON_SHOP_ORDER){
-    const c=document.getElementById('wpr_'+key);
-    if(c) drawWeaponPreview(c,key);
-  }
-  container.querySelectorAll('[data-buy]').forEach(b=>{
-    b.onclick=()=>buyWeapon(b.getAttribute('data-buy'));
-  });
-  container.querySelectorAll('[data-equip]').forEach(b=>{
-    b.onclick=()=>equipWeapon(b.getAttribute('data-equip'));
-  });
+  const cv=document.getElementById('wpvBig'); if(cv) drawWeaponBig(cv, key, performance.now()*0.001);
+  container.querySelectorAll('[data-wnav]').forEach(b=>b.onclick=()=>weaponCarousel(+b.getAttribute('data-wnav')));
+  container.querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>buyWeapon(b.getAttribute('data-buy')));
+  container.querySelectorAll('[data-equip]').forEach(b=>b.onclick=()=>equipWeapon(b.getAttribute('data-equip')));
+  container.querySelectorAll('[data-wdot]').forEach(d=>d.onclick=()=>{ weaponViewIdx=+d.getAttribute('data-wdot'); ensureAudio(); sfx('pickup'); renderWeaponShop(); });
+}
+function weaponCarousel(dir){
+  weaponViewIdx=(weaponViewIdx+dir+WEAPON_SHOP_ORDER.length)%WEAPON_SHOP_ORDER.length;
+  ensureAudio(); sfx('pickup'); renderWeaponShop();
+}
+// big animated weapon model on a holographic platform
+function drawWeaponBig(canvas, key, t){
+  const g=canvas.getContext('2d'), cw=canvas.width, ch=canvas.height;
+  g.clearRect(0,0,cw,ch);
+  const cx=cw/2, cy=ch/2, gold=isGoldenWeapon(key), pulse=0.5+0.5*Math.sin(t*2);
+  // holographic platform
+  const grd=g.createRadialGradient(cx,cy+40,4,cx,cy+40,cw*0.42);
+  grd.addColorStop(0, gold?'rgba(255,210,77,0.5)':'rgba(90,209,255,0.45)'); grd.addColorStop(1,'rgba(0,0,0,0)');
+  g.globalAlpha=0.4+0.25*pulse; g.fillStyle=grd; g.beginPath(); g.ellipse(cx,cy+42,cw*0.4,16,0,0,6.28); g.fill();
+  g.globalAlpha=1; g.strokeStyle=gold?'rgba(255,210,77,0.6)':'rgba(90,209,255,0.55)'; g.lineWidth=2;
+  g.beginPath(); g.ellipse(cx,cy+42,cw*0.33,13,0,0,6.28); g.stroke();
+  // weapon (bob + slight tilt)
+  g.save(); g.translate(cx, cy-6+Math.sin(t*1.5)*4); g.rotate(Math.sin(t*0.6)*0.12-0.16);
+  if(gold){ g.globalAlpha=0.25*pulse; g.fillStyle='#ffd24d'; g.beginPath(); g.arc(0,0,46,0,6.28); g.fill(); g.globalAlpha=1; }
+  drawWeaponIcon(key, 56, WEAPONS[key].color, g);
+  g.restore();
 }
 
 function buyWeapon(key){
@@ -1276,34 +1396,87 @@ function buyWeapon(key){
   saveOwnedWeapons();
   equipWeapon(key);
 }
-
 function equipWeapon(key){
   if(!ownedWeapons.includes(key)) return;
   equippedWeapon=key; saveEquippedWeapon();
+  weaponViewIdx=Math.max(0, WEAPON_SHOP_ORDER.indexOf(key));
   if(player&&player.isLocal) player.weapon=key;
   sfx('pickup');
-  renderWeaponShop(); // re-render inline pane
+  renderWeaponShop();
   updateMenuHiscore();
 }
 
-// ---- Character select — now inline inside CHARS tab pane ----
+// ===== CHARACTERS carousel: big animated preview + arrows =====
 const charGrid=document.getElementById('charGrid');
 function renderChars(){
   if(!charGrid) return;
-  charGrid.innerHTML = CHAR_ORDER.map(k=>{
-    const c=CHARACTERS[k];
-    return '<div class="charcard'+(k===selectedChar?' sel':'')+'" data-c="'+k+'">'+
-      '<div class="charemoji">'+c.emoji+'</div><div class="charname">'+c.name+'</div></div>';
-  }).join('');
-  charGrid.querySelectorAll('.charcard').forEach(el=>{
-    el.onclick=()=>{
-      selectedChar=el.getAttribute('data-c');
-      localStorage.setItem('bk_char', selectedChar);
-      if(player && player.isLocal) player.char=selectedChar;
-      ensureAudio(); sfx('pickup');
-      renderChars();
-    };
-  });
+  if(charViewIdx<0||charViewIdx>=CHAR_ORDER.length) charViewIdx=0;
+  const key=CHAR_ORDER[charViewIdx], c=CHARACTERS[key], meta=CHAR_META[key], rc=RARITY[meta.rarity];
+  const selected=selectedChar===key;
+  const footer = selected ? '<span class="okTag">✓ SELECTED</span>' : '<button class="carBtn act" data-cselect="'+key+'">SELECT</button>';
+  const dots=CHAR_ORDER.map((k,i)=>'<span class="dot'+(i===charViewIdx?' on':'')+(selectedChar===k?' eq':'')+'" data-cdot="'+i+'"></span>').join('');
+  charGrid.innerHTML=
+    '<div class="carousel" id="chCarousel">'+
+      '<div class="previewStage">'+
+        '<button class="navArrow left" data-cnav="-1" aria-label="prev">‹</button>'+
+        '<canvas id="cpvBig" class="bigPreview" width="260" height="172"></canvas>'+
+        '<button class="navArrow right" data-cnav="1" aria-label="next">›</button>'+
+        '<span class="rarityBadge" style="color:'+rc+';border-color:'+rc+'">'+meta.rarity+'</span>'+
+        '<span class="stateBadge owned">UNLOCKED</span>'+
+      '</div>'+
+      '<div class="itemName">'+escapeHtml(c.name)+'</div>'+
+      '<div class="itemDesc">'+meta.desc+'</div>'+
+      '<div class="itemFooter">'+footer+'</div>'+
+      '<div class="dots">'+dots+'</div>'+
+    '</div>';
+  const cv=document.getElementById('cpvBig'); if(cv) drawCharBig(cv, key, performance.now()*0.001);
+  charGrid.querySelectorAll('[data-cnav]').forEach(b=>b.onclick=()=>charCarousel(+b.getAttribute('data-cnav')));
+  charGrid.querySelectorAll('[data-cselect]').forEach(b=>b.onclick=()=>selectChar(b.getAttribute('data-cselect')));
+  charGrid.querySelectorAll('[data-cdot]').forEach(d=>d.onclick=()=>{ charViewIdx=+d.getAttribute('data-cdot'); ensureAudio(); sfx('pickup'); renderChars(); });
+}
+function charCarousel(dir){
+  charViewIdx=(charViewIdx+dir+CHAR_ORDER.length)%CHAR_ORDER.length;
+  ensureAudio(); sfx('pickup'); renderChars();
+}
+function selectChar(key){
+  selectedChar=key; localStorage.setItem('bk_char', selectedChar);
+  if(player&&player.isLocal) player.char=selectedChar;
+  ensureAudio(); sfx('pickup'); renderChars();
+}
+// big animated top-down soldier preview on a holographic platform
+function drawCharBig(canvas, key, t){
+  const g=canvas.getContext('2d'), cw=canvas.width, ch=canvas.height;
+  g.clearRect(0,0,cw,ch);
+  const c=CHARACTERS[key]||CHARACTERS.soldier, cx=cw/2, cy=ch/2-2, R=34, pulse=0.5+0.5*Math.sin(t*2);
+  const grd=g.createRadialGradient(cx,cy+46,4,cx,cy+46,cw*0.42);
+  grd.addColorStop(0,c.glow); grd.addColorStop(1,'rgba(0,0,0,0)');
+  g.globalAlpha=0.32+0.2*pulse; g.fillStyle=grd; g.beginPath(); g.ellipse(cx,cy+48,cw*0.36,15,0,0,6.28); g.fill();
+  g.globalAlpha=1; g.strokeStyle='rgba(255,255,255,0.18)'; g.lineWidth=2; g.beginPath(); g.ellipse(cx,cy+48,cw*0.3,12,0,0,6.28); g.stroke();
+  g.save(); g.translate(cx, cy+Math.sin(t*1.6)*3); g.rotate(Math.sin(t*0.5)*0.22);
+  drawSoldierSprite(g, c, R, t);
+  g.restore();
+}
+// compact, self-contained top-down soldier (used only for the menu preview)
+function drawSoldierSprite(g, ch, r, t){
+  g.globalAlpha=0.2; g.fillStyle=ch.glow; g.beginPath(); g.arc(0,0,r+10,0,6.28); g.fill(); g.globalAlpha=1;
+  if(ch.fire){ for(let i=0;i<10;i++){ const a=(i/10)*6.28, fl=r*(1.1+0.5*Math.abs(Math.sin(t*4+i*1.7))); g.fillStyle=i%2?'rgba(255,190,40,0.85)':'rgba(255,70,15,0.85)'; const bx=Math.cos(a)*r*0.7,by=Math.sin(a)*r*0.7,tx=Math.cos(a)*fl,ty=Math.sin(a)*fl,px=-Math.sin(a)*r*0.22,py=Math.cos(a)*r*0.22; g.beginPath(); g.moveTo(bx-px,by-py); g.lineTo(tx,ty); g.lineTo(bx+px,by+py); g.closePath(); g.fill(); } }
+  if(ch.light){ g.globalAlpha=0.3+0.2*Math.sin(t*3); g.strokeStyle='#fff'; g.lineWidth=2.5; g.beginPath(); g.arc(0,0,r*1.25,0,6.28); g.stroke(); g.globalAlpha=1; }
+  g.fillStyle=ch.body; g.beginPath(); g.ellipse(0,2,r*0.95,r*1.05,0,0,6.28); g.fill();
+  if(ch.shark){ g.fillStyle=ch.shoulder; g.beginPath(); g.moveTo(0,-r*0.3); g.lineTo(-r*0.3,r*0.95); g.lineTo(r*0.3,r*0.95); g.closePath(); g.fill(); }
+  g.fillStyle=ch.vest; g.beginPath(); g.roundRect(-r*0.5,-r*0.4,r*1.0,r*1.1,4); g.fill();
+  g.strokeStyle='#caa3ff'; g.lineWidth=2; g.beginPath(); g.moveTo(-r*0.25,-r*0.4); g.lineTo(-r*0.25,r*0.7); g.moveTo(r*0.25,-r*0.4); g.lineTo(r*0.25,r*0.7); g.stroke();
+  g.fillStyle=ch.shoulder; g.beginPath(); g.arc(-r*0.85,-r*0.1,r*0.42,0,6.28); g.fill(); g.beginPath(); g.arc(r*0.85,-r*0.1,r*0.42,0,6.28); g.fill();
+  g.save(); g.translate(r*0.34,0);
+  g.fillStyle='#23201a'; g.fillRect(-r*0.18,r*0.45,r*0.36,r*0.6);
+  g.fillStyle='#2a2a33'; g.fillRect(-r*0.22,-r*0.15,r*0.44,r*0.7);
+  g.fillStyle='#1c1c22'; g.fillRect(-r*0.16,-r*2.05,r*0.32,r*2.0);
+  g.fillStyle='#33333d'; g.fillRect(-r*0.16,-r*1.4,r*0.32,r*0.55);
+  g.restore();
+  g.fillStyle=ch.vest; g.beginPath(); g.arc(r*0.34,r*0.18,r*0.2,0,6.28); g.fill(); g.beginPath(); g.arc(r*0.34,-r*1.05,r*0.18,0,6.28); g.fill();
+  g.fillStyle=ch.helmet; g.beginPath(); g.arc(0,-r*0.15,r*0.62,0,6.28); g.fill();
+  g.fillStyle=ch.helmet2; g.beginPath(); g.arc(0,-r*0.15,r*0.46,0,6.28); g.fill();
+  if(ch.shark){ g.fillStyle=ch.helmet; g.beginPath(); g.moveTo(-r*0.5,-r*0.45); g.lineTo(0,-r*0.95); g.lineTo(r*0.5,-r*0.45); g.closePath(); g.fill(); g.fillStyle='#fff'; for(let i=-2;i<=2;i++){ const tx=i*r*0.16; g.beginPath(); g.moveTo(tx-r*0.07,-r*0.42); g.lineTo(tx,-r*0.28); g.lineTo(tx+r*0.07,-r*0.42); g.closePath(); g.fill(); } }
+  else { g.fillStyle=ch.brim; g.beginPath(); g.ellipse(0,-r*0.55,r*0.5,r*0.22,0,0,6.28); g.fill(); }
 }
 
 // ---- Game Modes panel ----
@@ -3266,8 +3439,15 @@ function loop(){
     }
   }
   gfx._t=now;
-  if(!document.hidden){ update(); render(); }
+  if(!document.hidden){ update(); render(); if(state==='menu') menuAnimTick(); }
   requestAnimationFrame(loop);
+}
+// animate the live weapon / character preview while the menu is open
+function menuAnimTick(){
+  if(!startScreen || startScreen.classList.contains('hidden')) return;
+  const t=performance.now()*0.001;
+  if(menuPaneIdx===1){ const c=document.getElementById('wpvBig'); if(c) drawWeaponBig(c, WEAPON_SHOP_ORDER[weaponViewIdx], t); }
+  else if(menuPaneIdx===0){ const c=document.getElementById('cpvBig'); if(c) drawCharBig(c, CHAR_ORDER[charViewIdx], t); }
 }
 // Keep the simulation & networking alive when the tab is in the background.
 // Browsers freeze requestAnimationFrame (and clamp normal timers) in hidden tabs,
