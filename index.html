@@ -335,18 +335,9 @@
     transition:all .2s; position:relative; }
   .dot.on { background:#f5d77a; box-shadow:0 0 8px rgba(245,215,122,0.7); transform:scale(1.25); }
   .dot.eq::after { content:''; position:absolute; inset:-3px; border-radius:50%; border:1px solid #5aff8a; }
-  /* ---- wide landscape: 2-column carousel (preview | details) fills the screen ---- */
-  @media (orientation:landscape) and (min-width:620px){
-    .carousel { display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);
-      grid-template-areas:'stage info' 'dots dots'; align-items:center; justify-items:center; gap:12px 28px; }
-    .previewStage { grid-area:stage; max-width:100%; }
-    .bigPreview { max-width:100%; }
-    .carInfo { grid-area:info; align-items:flex-start; text-align:left; max-width:440px; }
-    .carInfo .itemName, .carInfo .itemDesc { text-align:left; }
-    .carInfo .itemDesc, .carInfo .statBars { max-width:none; }
-    .carInfo .itemFooter { justify-content:flex-start; }
-    .dots { grid-area:dots; }
-  }
+  /* ---- vertical card: image → name → description → (stats) → button → dots ---- */
+  .carousel { max-width:480px; margin:0 auto; }
+  .carInfo { gap:8px; }
   /* ---- Modes & Ranking: same glassy / glowing identity as the carousels ---- */
   #modesList, #paneRanking .board { width:100%; max-width:680px; margin:0 auto; }
   .modeCard {
@@ -384,15 +375,19 @@
   @media (max-height:430px){
     .menuShell { gap:8px; padding-top:calc(env(safe-area-inset-top,0px) + 8px); }
     .menuPlayBtn { padding:13px; font-size:18px; }
-    /* compact the carousel so the action button stays visible in short landscape */
-    .carousel { gap:6px 24px; padding-bottom:4px; }
-    .previewStage { max-width:330px; }
-    .itemName { font-size:17px; letter-spacing:1.5px; }
-    .itemDesc { font-size:11.5px; }
-    .statBars { gap:5px; }
-    .statBar { height:7px; }
-    .itemFooter { min-height:34px; }
-    .carBtn { padding:9px 26px; font-size:15px; }
+    /* compact the vertical card so the whole stack fits in short landscape (no scroll) */
+    .menuPane { padding:3px 4px 4px; }
+    .carousel { gap:4px; padding-bottom:0; }
+    .carInfo { gap:5px; }
+    .previewStage { max-width:300px; }
+    .itemName { font-size:16px; letter-spacing:1.5px; }
+    .itemDesc { font-size:11px; line-height:1.35; }
+    .statBars { gap:4px; }
+    .statBar { height:6px; }
+    .statLbl { width:72px; font-size:9px; }
+    .itemFooter { min-height:30px; }
+    .carBtn { padding:8px 24px; font-size:14px; }
+    .dots { margin-top:0; }
     .modeCard { padding:11px 13px; margin-bottom:8px; }
     .modeCard .modeIcon { width:42px; height:42px; font-size:24px; }
     #paneRanking .board .row { padding:9px 12px; margin-bottom:6px; }
