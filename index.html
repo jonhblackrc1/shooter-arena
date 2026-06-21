@@ -114,7 +114,8 @@
   /* ============ MODERN MENU (flex-fills the screen, always fits) ============ */
   #startScreen {
     justify-content:stretch; align-items:stretch; padding:0; overflow:hidden;
-    background:radial-gradient(circle at 50% 28%, rgba(120,70,180,0.22), rgba(12,5,18,0.99));
+    background:#0a0410;   /* solid opaque base so the menu is never see-through */
+    background-image:radial-gradient(circle at 50% 28%, rgba(120,70,180,0.26), rgba(10,4,16,1));
   }
   /* animated aurora glow behind the menu */
   #startScreen::before {
@@ -130,7 +131,7 @@
     100% { transform:translate3d(3%,4%,0)  scale(1.12); }
   }
   .menuShell {
-    position:relative; z-index:1; width:100%; max-width:1100px; height:100dvh; margin:0 auto;
+    position:relative; z-index:1; width:100%; max-width:1280px; height:100dvh; margin:0 auto;
     display:flex; flex-direction:column; align-items:stretch; gap:12px;
     padding-top:calc(env(safe-area-inset-top,0px) + 12px);
     padding-bottom:calc(env(safe-area-inset-bottom,0px) + 12px);
@@ -193,7 +194,7 @@
   }
   @keyframes tabBar { from { transform:scaleX(0); } to { transform:scaleX(1); } }
   /* slider fills the remaining height; panes scroll internally so the menu never overflows */
-  .menuSliderWrap { width:100%; max-width:680px; margin:0 auto; flex:1 1 auto; min-height:0; overflow:hidden; border-radius:18px; }
+  .menuSliderWrap { width:100%; max-width:min(96vw,940px); margin:0 auto; flex:1 1 auto; min-height:0; overflow:hidden; border-radius:18px; }
   .menuSlider { display:flex; height:100%; will-change:transform; transition:transform .32s cubic-bezier(.4,0,.2,1); }
   .menuPane {
     min-width:100%; width:100%; height:100%; overflow-y:auto; box-sizing:border-box; padding:4px 4px 10px;
@@ -202,17 +203,11 @@
   .menuPane::-webkit-scrollbar { width:5px; }
   .menuPane::-webkit-scrollbar-thumb { background:rgba(176,124,255,0.4); border-radius:3px; }
   #paneModes { display:flex; flex-direction:column; }
-  /* staggered entrance for whatever cards a pane renders */
-  @keyframes cardIn { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
-  .charcard, .wcard, .modeCard, #paneRanking .board .row {
-    animation:cardIn .4s cubic-bezier(.2,.7,.3,1) both;
-  }
-  .charcard:nth-child(2){animation-delay:.05s} .charcard:nth-child(3){animation-delay:.1s} .charcard:nth-child(4){animation-delay:.15s}
-  .wcard:nth-child(2){animation-delay:.05s} .wcard:nth-child(3){animation-delay:.1s} .wcard:nth-child(4){animation-delay:.15s}
-  .wcard:nth-child(5){animation-delay:.2s} .wcard:nth-child(6){animation-delay:.25s} .wcard:nth-child(7){animation-delay:.3s}
-  .modeCard:nth-child(2){animation-delay:.06s} .modeCard:nth-child(3){animation-delay:.12s} .modeCard:nth-child(4){animation-delay:.18s}
-  #paneRanking .board .row:nth-child(2){animation-delay:.05s} #paneRanking .board .row:nth-child(3){animation-delay:.1s}
-  #paneRanking .board .row:nth-child(4){animation-delay:.15s} #paneRanking .board .row:nth-child(5){animation-delay:.2s}
+  /* One-shot entrance applied to the PERSISTENT pane container on tab switch only.
+     (Content cards are NOT animated, so re-rendering on a button press never
+     replays a fade — this fixes the menu flashing transparent on click/hold.) */
+  @keyframes paneIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+  .menuPane.swIn > * { animation:paneIn .32s cubic-bezier(.2,.7,.3,1) both; }
   .menuPlayBtn {
     margin-top:auto; position:sticky; bottom:0; width:100%; padding:17px; font-size:22px;
     letter-spacing:3px; border-radius:18px; overflow:hidden;
@@ -257,24 +252,42 @@
   .modeName { color:#f5d77a; font-weight:bold; font-size:15px; letter-spacing:1px; }
   .modeDesc { font-size:12px; color:#9b94c4; margin-top:2px; line-height:1.5; }
   /* ============ CAROUSEL (weapons & characters) ============ */
-  .carousel { display:flex; flex-direction:column; align-items:center; gap:9px; padding:4px 2px 8px;
-    animation:carIn .3s cubic-bezier(.2,.7,.3,1) both; }
-  @keyframes carIn { from{ opacity:0; transform:translateY(10px) scale(.985); } to{ opacity:1; transform:none; } }
+  .carousel { display:flex; flex-direction:column; align-items:center; gap:10px; padding:4px 2px 8px; width:100%; }
+  .carInfo { display:flex; flex-direction:column; align-items:center; gap:9px; width:100%; }
   .previewStage {
-    position:relative; width:100%; max-width:330px; border-radius:18px; overflow:hidden;
+    position:relative; width:100%; max-width:min(86vw,440px); border-radius:18px; overflow:hidden;
     display:flex; align-items:center; justify-content:center;
-    background:radial-gradient(circle at 50% 42%, rgba(90,80,160,0.18), rgba(10,8,18,0.55));
-    border:1px solid rgba(176,124,255,0.28);
-    box-shadow:inset 0 0 28px rgba(120,90,200,0.18), 0 6px 22px rgba(0,0,0,0.35);
+    background:radial-gradient(circle at 50% 42%, rgba(90,80,160,0.20), rgba(10,8,18,0.78));
+    border:1px solid rgba(176,124,255,0.30);
+    box-shadow:inset 0 0 28px rgba(120,90,200,0.18), 0 6px 22px rgba(0,0,0,0.4);
   }
+  /* futuristic corner brackets on the preview frame */
+  .previewStage::after {
+    content:''; position:absolute; inset:7px; border-radius:12px; pointer-events:none;
+    background:
+      linear-gradient(90deg,#caa3ff 0 18px,transparent 18px) top left/22px 2px no-repeat,
+      linear-gradient(0deg,#caa3ff 0 18px,transparent 18px) top left/2px 22px no-repeat,
+      linear-gradient(270deg,#caa3ff 0 18px,transparent 18px) top right/22px 2px no-repeat,
+      linear-gradient(0deg,#caa3ff 0 18px,transparent 18px) top right/2px 22px no-repeat,
+      linear-gradient(90deg,#caa3ff 0 18px,transparent 18px) bottom left/22px 2px no-repeat,
+      linear-gradient(180deg,#caa3ff 0 18px,transparent 18px) bottom left/2px 22px no-repeat,
+      linear-gradient(270deg,#caa3ff 0 18px,transparent 18px) bottom right/22px 2px no-repeat,
+      linear-gradient(180deg,#caa3ff 0 18px,transparent 18px) bottom right/2px 22px no-repeat;
+    opacity:0.55;
+  }
+  .previewStage.gold::after { background-image:
+      linear-gradient(90deg,#ffd24d 0 18px,transparent 18px),linear-gradient(0deg,#ffd24d 0 18px,transparent 18px),
+      linear-gradient(270deg,#ffd24d 0 18px,transparent 18px),linear-gradient(0deg,#ffd24d 0 18px,transparent 18px),
+      linear-gradient(90deg,#ffd24d 0 18px,transparent 18px),linear-gradient(180deg,#ffd24d 0 18px,transparent 18px),
+      linear-gradient(270deg,#ffd24d 0 18px,transparent 18px),linear-gradient(180deg,#ffd24d 0 18px,transparent 18px); }
   .previewStage.gold { border-color:rgba(255,210,77,0.45); box-shadow:inset 0 0 30px rgba(255,200,80,0.18),0 6px 22px rgba(0,0,0,0.4); }
-  .previewStage::before {  /* holographic scanline shimmer */
-    content:''; position:absolute; inset:0; pointer-events:none;
-    background:repeating-linear-gradient(0deg, rgba(255,255,255,0.035) 0 2px, transparent 2px 5px);
-    mix-blend-mode:overlay; animation:scan 6s linear infinite;
+  .previewStage::before {  /* holographic scanline shimmer (no blend mode — stays opaque) */
+    content:''; position:absolute; inset:0; pointer-events:none; z-index:1;
+    background:repeating-linear-gradient(0deg, rgba(176,160,255,0.05) 0 2px, transparent 2px 5px);
+    animation:scan 6s linear infinite;
   }
   @keyframes scan { from{ background-position:0 0; } to{ background-position:0 40px; } }
-  .bigPreview { display:block; width:100%; max-width:300px; height:auto; }
+  .bigPreview { display:block; width:100%; max-width:420px; height:auto; }
   .navArrow {
     position:absolute; top:50%; transform:translateY(-50%); z-index:2;
     width:38px; height:38px; border-radius:50%; padding:0; line-height:1;
@@ -299,8 +312,8 @@
   .stateBadge.locked { color:#ff7a7a; border:1px solid rgba(255,122,122,0.5); }
   .itemName { font-size:20px; font-weight:900; letter-spacing:2px; color:#f5d77a; text-align:center;
     text-shadow:0 0 14px rgba(245,215,122,0.35); }
-  .itemDesc { font-size:12px; color:#9b94c4; text-align:center; line-height:1.5; margin-top:-3px; max-width:300px; }
-  .statBars { width:100%; max-width:300px; display:flex; flex-direction:column; gap:6px; margin-top:2px; }
+  .itemDesc { font-size:12.5px; color:#9b94c4; text-align:center; line-height:1.5; margin-top:-3px; max-width:440px; }
+  .statBars { width:100%; max-width:440px; display:flex; flex-direction:column; gap:7px; margin-top:2px; }
   .statRow { display:flex; align-items:center; gap:8px; }
   .statLbl { width:78px; flex-shrink:0; font-size:10px; font-weight:bold; color:#9b94c4; letter-spacing:0.5px; }
   .statBar { flex:1; height:8px; border-radius:6px; background:rgba(255,255,255,0.07); overflow:hidden; }
@@ -322,23 +335,67 @@
     transition:all .2s; position:relative; }
   .dot.on { background:#f5d77a; box-shadow:0 0 8px rgba(245,215,122,0.7); transform:scale(1.25); }
   .dot.eq::after { content:''; position:absolute; inset:-3px; border-radius:50%; border:1px solid #5aff8a; }
+  /* ---- wide landscape: 2-column carousel (preview | details) fills the screen ---- */
+  @media (orientation:landscape) and (min-width:620px){
+    .carousel { display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);
+      grid-template-areas:'stage info' 'dots dots'; align-items:center; justify-items:center; gap:12px 28px; }
+    .previewStage { grid-area:stage; max-width:100%; }
+    .bigPreview { max-width:100%; }
+    .carInfo { grid-area:info; align-items:flex-start; text-align:left; max-width:440px; }
+    .carInfo .itemName, .carInfo .itemDesc { text-align:left; }
+    .carInfo .itemDesc, .carInfo .statBars { max-width:none; }
+    .carInfo .itemFooter { justify-content:flex-start; }
+    .dots { grid-area:dots; }
+  }
+  /* ---- Modes & Ranking: same glassy / glowing identity as the carousels ---- */
+  #modesList, #paneRanking .board { width:100%; max-width:680px; margin:0 auto; }
+  .modeCard {
+    background:linear-gradient(135deg, rgba(176,124,255,0.08), rgba(255,255,255,0.03));
+    border:1px solid rgba(176,124,255,0.22); border-radius:16px; padding:16px; margin-bottom:11px;
+    box-shadow:0 3px 14px rgba(0,0,0,0.28), inset 0 0 22px rgba(120,90,200,0.08); gap:14px;
+  }
+  .modeCard .modeIcon { width:50px; height:50px; display:flex; align-items:center; justify-content:center;
+    border-radius:13px; background:rgba(255,255,255,0.05); border:1px solid rgba(176,124,255,0.25);
+    box-shadow:inset 0 0 14px rgba(120,90,200,0.18); font-size:28px; }
+  .modeName { font-size:16px; }
+  .modeDesc { font-size:12.5px; }
+  .rankHeader { color:#caa3ff; font-size:13px; letter-spacing:3px; margin:2px 0 14px;
+    position:relative; padding-bottom:10px; }
+  .rankHeader::after { content:''; position:absolute; left:50%; bottom:0; transform:translateX(-50%);
+    width:120px; height:2px; background:linear-gradient(90deg,transparent,#caa3ff,transparent); }
+  #paneRanking .board .row {
+    display:flex; align-items:center; gap:6px; padding:12px 14px; margin-bottom:8px; border-radius:14px;
+    background:linear-gradient(135deg, rgba(176,124,255,0.07), rgba(255,255,255,0.025));
+    border:1px solid rgba(176,124,255,0.18); box-shadow:0 2px 12px rgba(0,0,0,0.25);
+  }
+  #paneRanking .board .row:nth-child(even){ background:linear-gradient(135deg, rgba(176,124,255,0.07), rgba(255,255,255,0.025)); }
+  #paneRanking .board .rank { width:30px; height:30px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+    border-radius:50%; font-size:14px; font-weight:900; color:#0b0d18; background:rgba(176,124,255,0.4); }
+  #paneRanking .board .row:nth-child(1) .rank { background:linear-gradient(135deg,#ffe08a,#ffb13a); box-shadow:0 0 12px rgba(255,200,80,0.6); }
+  #paneRanking .board .row:nth-child(2) .rank { background:linear-gradient(135deg,#eef0f6,#b9bfcc); }
+  #paneRanking .board .row:nth-child(3) .rank { background:linear-gradient(135deg,#f0b884,#cf8a52); }
+  #paneRanking .board .nm { flex:1; font-size:15px; font-weight:bold; color:#e8e6f5; padding:0 10px; }
+  #paneRanking .board .sc { font-size:15px; font-weight:900; color:#f5d77a; text-shadow:0 0 10px rgba(245,215,122,0.3); }
+  #paneRanking .board .empty { color:#9b94c4; text-align:center; padding:20px; }
   /* hide the centre title when the top bar gets tight, so stats + tabs always fit */
-  @media (max-width:680px){
+  @media (max-width:620px){
     .menuTitle { display:none; }
   }
   @media (max-height:430px){
     .menuShell { gap:8px; padding-top:calc(env(safe-area-inset-top,0px) + 8px); }
     .menuPlayBtn { padding:13px; font-size:18px; }
-    /* compact the carousel so the action button stays visible in landscape */
-    .carousel { gap:5px; padding-bottom:4px; }
-    .previewStage { max-width:240px; }
-    .bigPreview { max-width:220px; }
+    /* compact the carousel so the action button stays visible in short landscape */
+    .carousel { gap:6px 24px; padding-bottom:4px; }
+    .previewStage { max-width:330px; }
     .itemName { font-size:17px; letter-spacing:1.5px; }
-    .itemDesc { font-size:11px; }
-    .statBars { gap:4px; }
+    .itemDesc { font-size:11.5px; }
+    .statBars { gap:5px; }
     .statBar { height:7px; }
     .itemFooter { min-height:34px; }
     .carBtn { padding:9px 26px; font-size:15px; }
+    .modeCard { padding:11px 13px; margin-bottom:8px; }
+    .modeCard .modeIcon { width:42px; height:42px; font-size:24px; }
+    #paneRanking .board .row { padding:9px 12px; margin-bottom:6px; }
   }
   /* ===== "Rotate your device" prompt — the game is meant for landscape ===== */
   #rotateHint {
@@ -1384,10 +1441,12 @@ function renderWeaponShop(container){
         '<span class="rarityBadge" style="color:'+rc+';border-color:'+rc+'">'+meta.rarity+'</span>'+
         stateBadge+
       '</div>'+
-      '<div class="itemName"'+(gold?' style="color:#ffd24d"':'')+'>'+escapeHtml(w.name)+'</div>'+
-      '<div class="itemDesc">'+meta.desc+'</div>'+
-      '<div class="statBars">'+bar('DAMAGE',st.dmg,'#ff7a5a')+bar('FIRE RATE',st.rate,'#caa3ff')+bar('RANGE',st.range,'#5ad1ff')+bar('ACCURACY',st.acc,'#5aff8a')+'</div>'+
-      '<div class="itemFooter">'+footer+'</div>'+
+      '<div class="carInfo">'+
+        '<div class="itemName"'+(gold?' style="color:#ffd24d"':'')+'>'+escapeHtml(w.name)+'</div>'+
+        '<div class="itemDesc">'+meta.desc+'</div>'+
+        '<div class="statBars">'+bar('DAMAGE',st.dmg,'#ff7a5a')+bar('FIRE RATE',st.rate,'#caa3ff')+bar('RANGE',st.range,'#5ad1ff')+bar('ACCURACY',st.acc,'#5aff8a')+'</div>'+
+        '<div class="itemFooter">'+footer+'</div>'+
+      '</div>'+
       '<div class="dots">'+dots+'</div>'+
     '</div>';
   const cv=document.getElementById('wpvBig'); if(cv) drawWeaponBig(cv, key, performance.now()*0.001);
@@ -1455,9 +1514,11 @@ function renderChars(){
         '<span class="rarityBadge" style="color:'+rc+';border-color:'+rc+'">'+meta.rarity+'</span>'+
         '<span class="stateBadge owned">UNLOCKED</span>'+
       '</div>'+
-      '<div class="itemName">'+escapeHtml(c.name)+'</div>'+
-      '<div class="itemDesc">'+meta.desc+'</div>'+
-      '<div class="itemFooter">'+footer+'</div>'+
+      '<div class="carInfo">'+
+        '<div class="itemName">'+escapeHtml(c.name)+'</div>'+
+        '<div class="itemDesc">'+meta.desc+'</div>'+
+        '<div class="itemFooter">'+footer+'</div>'+
+      '</div>'+
       '<div class="dots">'+dots+'</div>'+
     '</div>';
   const cv=document.getElementById('cpvBig'); if(cv) drawCharBig(cv, key, performance.now()*0.001);
@@ -1554,6 +1615,13 @@ function goToPane(idx, skipAnim){
   if(menuPaneIdx===1) renderWeaponShop();
   if(menuPaneIdx===2) renderModes();
   if(menuPaneIdx===3) renderBoard(leaderboardMenu, 20, -1);
+  // one-shot entrance fade on the persistent pane — ONLY on a real tab switch
+  // (never on resize re-align or button re-render → no transparency flash on click)
+  if(!skipAnim){
+    const ap=document.querySelectorAll('.menuPane')[menuPaneIdx];
+    if(ap){ ap.classList.remove('swIn'); void ap.offsetWidth; ap.classList.add('swIn');
+      clearTimeout(ap._swT); ap._swT=setTimeout(()=>ap.classList.remove('swIn'), 360); }
+  }
 }
 // keep the active pane aligned when the viewport changes (rotation, browser bars, fullscreen)
 ['resize','orientationchange'].forEach(ev=>window.addEventListener(ev, ()=>{
