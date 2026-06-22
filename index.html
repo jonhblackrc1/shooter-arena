@@ -252,11 +252,12 @@
   .modeName { color:#f5d77a; font-weight:bold; font-size:15px; letter-spacing:1px; }
   .modeDesc { font-size:12px; color:#9b94c4; margin-top:2px; line-height:1.5; }
   /* ============ CAROUSEL (weapons & characters) ============ */
-  /* the model box takes ~half the pane height; name/desc/stats/button fill below */
-  .carousel { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:2px; width:100%; height:100%; }
+  /* content sits in a centred column at ~half the pane width */
+  .carousel { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:2px;
+    width:50%; min-width:300px; max-width:560px; margin:0 auto; height:100%; }
   .carInfo { display:flex; flex-direction:column; align-items:center; gap:9px; width:100%; flex-shrink:0; }
   .previewStage {
-    position:relative; width:100%; max-width:none; flex:0 0 48%; min-height:96px; border-radius:18px; overflow:hidden;
+    position:relative; width:100%; max-width:none; flex:1 1 auto; min-height:110px; border-radius:18px; overflow:hidden;
     display:flex; align-items:center; justify-content:center;
     background:radial-gradient(circle at 50% 42%, rgba(90,80,160,0.20), rgba(10,8,18,0.82));
     border:1px solid rgba(176,124,255,0.32);
@@ -340,8 +341,8 @@
   .carInfo { gap:8px; }
   /* ---- Modes: cards grow to fill the whole pane (tech panel grid) ---- */
   #paneModes { display:flex; flex-direction:column; }
-  /* cards keep a natural height and centre vertically in the available space */
-  #modesList { width:100%; flex:1 1 auto; min-height:0; display:flex; flex-direction:column; justify-content:center; gap:11px; margin-bottom:10px; }
+  /* cards keep a natural height and centre vertically; column is ~half pane width */
+  #modesList { width:50%; min-width:300px; max-width:560px; margin:0 auto 10px; flex:1 1 auto; min-height:0; display:flex; flex-direction:column; justify-content:center; gap:11px; }
   #paneModes .menuPlayBtn { margin-top:0; flex-shrink:0; }
   .modeCard {
     flex:0 0 auto; margin-bottom:0; position:relative; overflow:hidden; gap:16px; padding:15px 20px;
@@ -360,7 +361,7 @@
     position:relative; padding-bottom:9px; }
   .rankHeader::after { content:''; position:absolute; left:50%; bottom:0; transform:translateX(-50%);
     width:120px; height:2px; background:linear-gradient(90deg,transparent,#caa3ff,transparent); }
-  #paneRanking .board { width:100%; flex:1 1 auto; min-height:0; position:relative;
+  #paneRanking .board { width:50%; min-width:300px; max-width:560px; margin:0 auto; flex:1 1 auto; min-height:0; position:relative;
     display:flex; flex-direction:column; gap:8px; padding:12px; border-radius:18px;
     overflow-y:auto; -webkit-overflow-scrolling:touch;          /* finger scroll for ranks beyond the top 10 */
     scrollbar-width:thin; scrollbar-color:rgba(176,124,255,0.45) transparent;
