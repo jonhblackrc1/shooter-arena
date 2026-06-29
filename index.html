@@ -154,23 +154,27 @@
   /* fullscreen toggle (sits in the top bar) */
   .fsBtn {
     flex-shrink:0; width:40px; height:40px; border-radius:12px; padding:0; line-height:1;
-    background:rgba(255,255,255,0.06); border:1px solid rgba(176,124,255,0.4);
+    background:rgba(40,30,60,0.6); border:1px solid rgba(176,124,255,0.4);
     color:#e8e6f5; font-size:19px; cursor:pointer; display:flex; align-items:center; justify-content:center;
-    backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); -webkit-tap-highlight-color:transparent;
-    transition:transform .15s, background .2s;
+    -webkit-tap-highlight-color:transparent; transition:transform .15s, background .2s;
   }
   .fsBtn:active { transform:scale(0.88); background:rgba(176,124,255,0.25); }
   /* stat pills (top-left) */
   .statRow { display:flex; gap:8px; align-items:center; flex-shrink:0; }
   .statPill {
     display:flex; align-items:center; gap:6px; padding:7px 14px; border-radius:30px;
-    background:rgba(255,255,255,0.05); border:1px solid rgba(176,124,255,0.35);
-    backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+    background:rgba(40,30,60,0.55); border:1px solid rgba(176,124,255,0.35);
     font-size:14px; font-weight:900; color:#e8e6f5; letter-spacing:0.5px;
     box-shadow:0 2px 14px rgba(0,0,0,0.3);
   }
   .statPill.gold { border-color:rgba(255,210,77,0.5); color:#ffd24d; }
+  .statPill.ruby { border-color:rgba(255,70,110,0.55); color:#ff5c80; }
   .statIco { font-size:15px; }
+  /* CSS-drawn ruby gem icon */
+  .rubyIco { width:14px; height:14px; flex-shrink:0;
+    background:linear-gradient(135deg,#ff8aa0,#ff2d55 55%,#c8123c);
+    clip-path:polygon(50% 0,85% 32%,72% 100%,28% 100%,15% 32%);
+    box-shadow:0 0 7px rgba(255,60,110,0.7); }
   /* tab bar menu (top-right) — compact, content-width */
   .menuTabBar { display:flex; gap:5px; width:auto; flex-shrink:0; }
   .menuTab {
@@ -295,7 +299,7 @@
     width:38px; height:38px; border-radius:50%; padding:0; line-height:1;
     background:rgba(20,14,34,0.55); border:1.5px solid rgba(176,124,255,0.5);
     color:#e8e6f5; font-size:24px; cursor:pointer; -webkit-tap-highlight-color:transparent;
-    backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); transition:transform .15s, background .2s, box-shadow .2s;
+    transition:transform .15s, background .2s, box-shadow .2s;
     display:flex; align-items:center; justify-content:center;
   }
   .navArrow.left{ left:8px; } .navArrow.right{ right:8px; }
@@ -304,11 +308,11 @@
   .rarityBadge {
     position:absolute; top:8px; left:8px; z-index:2; font-size:10px; font-weight:900; letter-spacing:1px;
     padding:3px 9px; border-radius:20px; border:1px solid currentColor;
-    background:rgba(8,6,14,0.55); backdrop-filter:blur(4px); text-shadow:0 0 8px currentColor;
+    background:rgba(8,6,14,0.78); text-shadow:0 0 8px currentColor;
   }
   .stateBadge {
     position:absolute; top:8px; right:8px; z-index:2; font-size:9px; font-weight:bold; letter-spacing:0.5px;
-    padding:3px 8px; border-radius:20px; background:rgba(8,6,14,0.55); backdrop-filter:blur(4px);
+    padding:3px 8px; border-radius:20px; background:rgba(8,6,14,0.78);
   }
   .stateBadge.owned { color:#5aff8a; border:1px solid rgba(90,255,138,0.5); }
   .stateBadge.locked { color:#ff7a7a; border:1px solid rgba(255,122,122,0.5); }
@@ -342,17 +346,19 @@
   /* ---- Modes: cards grow to fill the whole pane (tech panel grid) ---- */
   #paneModes { display:flex; flex-direction:column; }
   /* cards keep a natural height and centre vertically; column is ~half pane width */
-  #modesList { width:50%; min-width:300px; max-width:560px; margin:0 auto 10px; flex:1 1 auto; min-height:0; display:flex; flex-direction:column; justify-content:center; gap:11px; }
+  #modesList { width:50%; min-width:300px; max-width:560px; margin:0 auto 8px; flex:1 1 auto; min-height:0; display:flex; flex-direction:column; justify-content:center; gap:8px; }
   #paneModes .menuPlayBtn { margin-top:0; flex-shrink:0; }
+  /* cards share the available height (shrink to fit on short phones, capped so they
+     stay reasonable on tall screens) — the 4 modes ALWAYS fit, never cut off */
   .modeCard {
-    flex:0 0 auto; margin-bottom:0; position:relative; overflow:hidden; gap:16px; padding:15px 20px;
+    flex:1 1 0; min-height:50px; max-height:92px; margin-bottom:0; position:relative; overflow:hidden; gap:14px; padding:0 18px;
     background:linear-gradient(135deg, rgba(176,124,255,0.09), rgba(255,255,255,0.03));
     border:1px solid rgba(176,124,255,0.24); border-radius:16px;
     box-shadow:0 3px 14px rgba(0,0,0,0.28), inset 0 0 26px rgba(120,90,200,0.1);
   }
-  .modeCard .modeIcon { width:54px; height:54px; display:flex; align-items:center; justify-content:center;
-    border-radius:14px; background:rgba(255,255,255,0.05); border:1px solid rgba(176,124,255,0.25);
-    box-shadow:inset 0 0 14px rgba(120,90,200,0.18); font-size:30px; flex-shrink:0; }
+  .modeCard .modeIcon { width:48px; height:48px; display:flex; align-items:center; justify-content:center;
+    border-radius:13px; background:rgba(255,255,255,0.05); border:1px solid rgba(176,124,255,0.25);
+    box-shadow:inset 0 0 14px rgba(120,90,200,0.18); font-size:27px; flex-shrink:0; }
   .modeName { font-size:17px; }
   .modeDesc { font-size:12.5px; }
   /* ---- Ranking: one framed tech panel filling the pane, rows distributed ---- */
@@ -403,12 +409,31 @@
     .itemFooter { min-height:30px; }
     .carBtn { padding:8px 24px; font-size:14px; }
     .dots { margin-top:0; }
-    #modesList { gap:8px; }
-    .modeCard { padding:11px 14px; gap:12px; }
-    .modeCard .modeIcon { width:44px; height:44px; font-size:25px; }
+    #modesList { gap:7px; }
+    .modeCard { padding:0 14px; gap:11px; min-height:44px; }
+    .modeCard .modeIcon { width:42px; height:42px; font-size:24px; }
     #paneRanking .board { padding:10px; gap:6px; }
     #paneRanking .board .row { height:42px; }
   }
+  /* ===== Daily reward modal ===== */
+  #dailyScreen { z-index:60; background:rgba(6,3,12,0.78); justify-content:center; align-items:center; }
+  .dailyCard {
+    width:min(86vw,400px); padding:26px 24px 22px; border-radius:22px; text-align:center;
+    display:flex; flex-direction:column; align-items:center; gap:12px;
+    background:radial-gradient(circle at 50% 22%, rgba(120,80,160,0.3), rgba(14,8,22,0.96));
+    border:1px solid rgba(255,90,130,0.4);
+    box-shadow:0 0 50px rgba(255,70,110,0.3), inset 0 0 40px rgba(120,90,200,0.14);
+    animation:dailyPop .4s cubic-bezier(.2,.9,.3,1.2) both;
+  }
+  @keyframes dailyPop { from{ opacity:0; transform:scale(.8); } to{ opacity:1; transform:none; } }
+  .dailyTitle { font-size:15px; letter-spacing:4px; font-weight:900; color:#caa3ff; }
+  .dailyGem { margin:4px 0 2px; animation:gemFloat 2.4s ease-in-out infinite; }
+  @keyframes gemFloat { 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-6px); } }
+  .rubyIco.big { width:78px; height:78px; box-shadow:0 0 34px rgba(255,60,110,0.8); }
+  .dailyAmount { font-size:30px; font-weight:900; letter-spacing:2px; color:#ff5c80;
+    text-shadow:0 0 18px rgba(255,70,110,0.5); }
+  .dailySub { font-size:13px; color:#9b94c4; line-height:1.5; max-width:280px; }
+  #dailyClaimBtn { margin-top:8px; }
   /* ===== "Rotate your device" prompt — the game is meant for landscape ===== */
   #rotateHint {
     display:none; position:fixed; inset:0; z-index:9999;
@@ -469,6 +494,7 @@
       <div class="statRow">
         <div class="statPill"><span class="statIco">🏆</span><span id="hiscoreMenu">0</span></div>
         <div class="statPill gold"><span class="statIco">🪙</span><span id="coinsMenu">0</span></div>
+        <div class="statPill ruby"><span class="rubyIco"></span><span id="rubiesMenu">0</span></div>
       </div>
       <div class="title menuTitle">SHOOTER ARENA</div>
       <div class="topRight">
@@ -510,6 +536,17 @@
 
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ===== Daily reward (first entry each day) ===== -->
+<div class="overlay hidden" id="dailyScreen">
+  <div class="dailyCard">
+    <div class="dailyTitle">DAILY REWARD</div>
+    <div class="dailyGem"><span class="rubyIco big"></span></div>
+    <div class="dailyAmount">+5 RUBÍ</div>
+    <div class="dailySub">¡Bienvenido de vuelta! Recibiste 5 rubíes.</div>
+    <button class="btn" id="dailyClaimBtn">RECLAMAR</button>
   </div>
 </div>
 
@@ -1161,8 +1198,10 @@ const UPGRADES={
 };
 let UPG = (function(){ try{ return JSON.parse(localStorage.getItem('bk_upg')||'{}'); }catch(e){ return {}; } })();
 let money = parseInt(localStorage.getItem('bk_money')||'0',10)||0;
+let rubies = parseInt(localStorage.getItem('bk_rubies')||'0',10)||0;   // premium exchange currency
 function saveUpg(){ try{ localStorage.setItem('bk_upg', JSON.stringify(UPG)); }catch(e){} }
 function saveMoney(){ try{ localStorage.setItem('bk_money', String(money)); }catch(e){} }
+function saveRubies(){ try{ localStorage.setItem('bk_rubies', String(rubies)); }catch(e){} }
 function upgLevel(weapon, track){ return (UPG[weapon] && UPG[weapon][track]) || 0; }
 // returns the weapon stats with the player's purchased upgrades applied
 function effectiveWeapon(key){
@@ -1326,13 +1365,29 @@ function renderBoard(el, max, highlightIdx){
     '</div>').join('');
 }
 const coinsMenu=document.getElementById('coinsMenu');
+const rubiesMenu=document.getElementById('rubiesMenu');
 function updateMenuHiscore(){
   const top=loadScores();
   if(top[0] && top[0].score>highScore) highScore=top[0].score;
   if(hiscoreMenu) hiscoreMenu.textContent=highScore;
   if(coinsMenu) coinsMenu.textContent=money;
+  if(rubiesMenu) rubiesMenu.textContent=rubies;
   renderBoard(leaderboardMenu, 10, -1);  // ranking shows the top 10, scroll for the rest
 }
+// ---- Daily ruby reward: +5 the first time you open the game each calendar day ----
+function checkDailyReward(){
+  const today=new Date().toDateString();
+  let last=null; try{ last=localStorage.getItem('bk_last_daily'); }catch(e){}
+  if(last===today) return;                         // already claimed today
+  rubies+=5; saveRubies();
+  try{ localStorage.setItem('bk_last_daily', today); }catch(e){}
+  updateMenuHiscore();
+  const ds=document.getElementById('dailyScreen');
+  if(ds){ ds.classList.remove('hidden'); ensureAudio&&ensureAudio(); try{ sfx('pickup'); }catch(e){} }
+}
+(function(){ const b=document.getElementById('dailyClaimBtn');
+  if(b) b.onclick=()=>{ const ds=document.getElementById('dailyScreen'); if(ds) ds.classList.add('hidden'); try{ ensureAudio(); sfx('pickup'); }catch(e){} updateMenuHiscore(); };
+})();
 
 // ---- ARMORY (weapon upgrade shop) ----
 const shopScreen=document.getElementById('shopScreen');
@@ -3954,6 +4009,7 @@ state='menu';
 updateMenuHiscore();
 renderChars(); renderWeaponShop(); renderModes();
 goToPane(0, true);
+checkDailyReward();   // grant +5 rubies on the first visit each day
 initPlayer();
 loop();
 
