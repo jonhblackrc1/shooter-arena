@@ -845,9 +845,9 @@ const SPAWN_INTERVAL=34;   // frames between portal openings (slower, measured p
 const KIND={
   melee:   { r:14, hpMul:1.30, spdMul:1.22, score:100, coin:0 },
   ranged:  { r:13, hpMul:1.00, spdMul:0.95, score:120, coin:0 },
-  charger: { r:16, hpMul:1.65, spdMul:1.00, score:170, coin:1 },
+  calipso: { r:16, hpMul:1.65, spdMul:1.00, score:170, coin:1 },   // the charging enemy: "Calipso"
 };
-const ELITE={ hpMul:1.75, dmgMul:1.6, spdMul:1.14, rMul:1.22, scoreMul:2.6, coinBonus:3 };
+const ELITE={ hpMul:1.75, dmgMul:1.6, spdMul:1.14, rMul:1.25, scoreMul:2.6, coinBonus:3 };  // elites ~25% bigger
 
 // Base hp / contact damage grow smoothly with the level number.
 function enemyBaseHp(lvl){ return 2 + lvl*0.6; }      // L1≈2.6  L20≈14  L50≈32
@@ -861,10 +861,11 @@ function makeEnemy(kind, elite, cfg, x, y){
   let hp=enemyBaseHp(lvl)*K.hpMul;
   let spd=cfg.espeed*K.spdMul*0.75;   // global 25% slowdown for tactical pacing
   let r=K.r, score=K.score, coin=K.coin;
-  let dmg = kind==='charger' ? chargerHitDmg(lvl) : (kind==='melee' ? meleeHitDmg(lvl) : 0);
+  let dmg = kind==='calipso' ? chargerHitDmg(lvl) : (kind==='melee' ? meleeHitDmg(lvl) : 0);
   if(elite){
     hp*=ELITE.hpMul; spd*=ELITE.spdMul; r*=ELITE.rMul; dmg*=ELITE.dmgMul;
     score=Math.round(score*ELITE.scoreMul); coin+=ELITE.coinBonus;
+    if(kind==='calipso') hp*=0.75;    // Calipso Elite: -25% HP (dangerous by ability, not bulk)
   }
   hp=Math.max(1, Math.round(hp));
   const e={ x, y, r:Math.round(r), hp, maxHp:hp, speed:spd, kind, elite:!!elite,
@@ -872,7 +873,7 @@ function makeEnemy(kind, elite, cfg, x, y){
             wob:Math.random()*Math.PI*2, fireCD:Math.random()*60, astate:'chase', atimer:0, struck:false,
             flank:(Math.random()*2-1)*0.6, reflank:0, repos:0 };  // per-enemy movement variation
   if(kind==='ranged'){ e.shoot=cfg.eShoot; e.strafe=(Math.random()<0.5?1:-1); }
-  if(kind==='charger'){ e.cstate='roam'; e.ctimer=0; e.cdx=0; e.cdy=0; e.chargeDist=0; }
+  if(kind==='calipso'){ e.cstate='roam'; e.ctimer=0; e.cdx=0; e.cdy=0; e.chargeDist=0; }
   return e;
 }
 
@@ -917,7 +918,7 @@ function buildRoundRoster(lvl){
   let list=[]; const push=(k,el,n)=>{ for(let i=0;i<n;i++) list.push({kind:k,elite:el}); };
   push('melee',false,cc.m); push('melee',true,cc.me);
   push('ranged',false,cc.r); push('ranged',true,cc.re);
-  push('charger',false,cc.c); push('charger',true,cc.ce);
+  push('calipso',false,cc.c); push('calipso',true,cc.ce);
   if(list.length>10) list=list.slice(0,10);
   for(let i=list.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t=list[i]; list[i]=list[j]; list[j]=t; }
   const key=e=>e.kind+(e.elite?'E':'');
@@ -958,7 +959,7 @@ function openPortalFor(kind, elite, fast){
   const pt=findSpawnPoint(er);
   portals.push({ x:pt.x, y:pt.y, kind, elite, er,
     t:0, open:(fast?44:90), hold:20, close:24, phase:'open', spawned:false, rot:Math.random()*6.28,
-    hue: elite?'#ffd24d':(kind==='charger'?'#ff8a2a':(kind==='melee'?'#ff5a2a':'#ff7a1a')) });
+    hue: elite?'#ffd24d':(kind==='calipso'?'#ff8a2a':(kind==='melee'?'#ff5a2a':'#ff7a1a')) });
   sfx('portal');
 }
 // open an alien portal that births the next queued enemy of this round
@@ -1013,7 +1014,7 @@ function drawPortals(){
     // ---- threat indicator: a type-coloured icon (+ crown for Elite) so the
     //      player can read what's emerging and plan before it lands ----
     if(P.phase!=='close'){
-      const tc = P.kind==='melee'?'#ff5a4a':(P.kind==='charger'?'#ffae42':'#b06af0');
+      const tc = P.kind==='melee'?'#ff5a4a':(P.kind==='calipso'?'#ffae42':'#b06af0');
       ctx.save(); ctx.translate(x, y - P.er*1.7 - 18); ctx.globalAlpha=Math.min(1,s*1.4);
       if(P.elite){
         ctx.fillStyle='#ffd24d';
@@ -1024,7 +1025,7 @@ function drawPortals(){
       ctx.strokeStyle=tc; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,0,10,0,6.28); ctx.stroke();
       ctx.fillStyle=tc;
       if(P.kind==='melee'){ ctx.beginPath(); ctx.moveTo(-4,-3); ctx.lineTo(4,-3); ctx.lineTo(0,5); ctx.closePath(); ctx.fill(); }              // fang
-      else if(P.kind==='charger'){ ctx.beginPath(); ctx.moveTo(-5,3); ctx.lineTo(0,-4); ctx.lineTo(5,3); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-5,6); ctx.lineTo(0,-1); ctx.lineTo(5,6); ctx.stroke(); } // charge chevrons
+      else if(P.kind==='calipso'){ ctx.beginPath(); ctx.moveTo(-5,3); ctx.lineTo(0,-4); ctx.lineTo(5,3); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-5,6); ctx.lineTo(0,-1); ctx.lineTo(5,6); ctx.stroke(); } // charge chevrons
       else { ctx.beginPath(); ctx.arc(0,0,2.2,0,6.28); ctx.fill(); ctx.beginPath(); ctx.arc(0,0,6,0,6.28); ctx.stroke(); }                       // target
       ctx.restore();
     }
@@ -1741,7 +1742,7 @@ function openPause(){
 function resumeGame(){
   pauseScreen.classList.add('hidden');
   settingsScreen.classList.add('hidden');
-  if(net.mode==='off' && state==='paused'){ state='play'; nextMissileTime=performance.now()+10000; }
+  if(net.mode==='off' && state==='paused'){ state='play'; nextMissileTime=performance.now()+nextMissileDelay(); }
 }
 function openSettings(){ pauseScreen.classList.add('hidden'); settingsScreen.classList.remove('hidden'); renderSettings(); }
 function closeSettings(){ settingsScreen.classList.add('hidden'); pauseScreen.classList.remove('hidden'); }
@@ -1834,10 +1835,12 @@ function spawnMissileBarrage(){
     missiles.push({ x:cam.x+Math.random()*VW, y:cam.y+Math.random()*VH, warn:78, boom:0 });
   }
 }
+// each barrage schedules the next one randomly at 5s OR 10s (no fixed pattern)
+function nextMissileDelay(){ return (Math.random()<0.5 ? 5000 : 10000); }
 function updateMissiles(){
   const now=performance.now();
-  if(!nextMissileTime) nextMissileTime=now+10000;
-  if(now>=nextMissileTime){ spawnMissileBarrage(); nextMissileTime=now+10000; }
+  if(!nextMissileTime) nextMissileTime=now+nextMissileDelay();
+  if(now>=nextMissileTime){ spawnMissileBarrage(); nextMissileTime=now+nextMissileDelay(); }
   for(let i=missiles.length-1;i>=0;i--){
     const m=missiles[i];
     if(m.warn>0){
@@ -2006,7 +2009,7 @@ function beginBossActive(e, tp, a, dist){
       bossZones.push({x:Math.max(70,Math.min(MAP_W-70,zx)), y:Math.max(70,Math.min(MAP_H-70,zy)), r:74, t:0, fuse:86, dmg:18+level*0.4});
     }
   }
-  else if(ab==='summon'){ e.abilT=22; const ks=['melee','ranged',e.phase>=3?'charger':'ranged']; const n=2+(e.phase>=3?1:0); for(let i=0;i<n;i++) openPortalFor(ks[i%ks.length], false, true); }
+  else if(ab==='summon'){ e.abilT=22; const ks=['melee','ranged',e.phase>=3?'calipso':'ranged']; const n=2+(e.phase>=3?1:0); for(let i=0;i<n;i++) openPortalFor(ks[i%ks.length], false, true); }
   else if(ab==='charge'){ e.abilT=72; e.cdx=Math.cos(a); e.cdy=Math.sin(a); e.chargeDist=0; e.struck=false; sfx('shoot'); }
   else if(ab==='shock'){ e.abilT=16; shockwaves.push({x:e.x,y:e.y,r:e.r,max:340,dmg:16+level*0.4,boss:true,hit:false}); addShake(0.6); }
   else if(ab==='beam'){ e.abilT=64; e.beamSweep=(Math.random()<0.5?1:-1); bossBeam={x:e.x,y:e.y,ang:a,len:1150}; }
@@ -2246,6 +2249,29 @@ function nearestPlayerTo(e){
   }
   return best;
 }
+// ---- Subtle aim assist: if a shot from (px,py) at heading `a` would MISS but
+//      passes very close to an enemy, nudge it just enough to graze the target.
+//      If it already hits, or nothing is within the small margin, leave `a` alone. ----
+function aimAssist(px, py, a){
+  const RANGE=1000, MAX_CORRECT=0.085;   // ~5° hard cap — stays imperceptible
+  const dx=Math.cos(a), dy=Math.sin(a);
+  let best=null, bestPerp=1e9;
+  for(const e of enemies){
+    if(e.out) continue;
+    const rx=e.x-px, ry=e.y-py;
+    const along=rx*dx+ry*dy;             // distance ahead along the shot
+    if(along<=0 || along>RANGE) continue; // behind the player or out of range
+    const perp=Math.abs(-rx*dy+ry*dx);   // perpendicular distance from the shot line
+    if(perp < e.r) return a;              // already a clean hit → don't touch the aim
+    if(perp < e.r+24 && perp < bestPerp){ best=e; bestPerp=perp; }  // near-miss within margin
+  }
+  if(!best) return a;
+  // rotate just enough toward the target, clamped so the correction is barely felt
+  let diff=Math.atan2(best.y-py, best.x-px) - a;
+  while(diff> Math.PI) diff-=Math.PI*2;
+  while(diff<-Math.PI) diff+=Math.PI*2;
+  return a + Math.max(-MAX_CORRECT, Math.min(MAX_CORRECT, diff));
+}
 // read this device's local input (joystick + keyboard)
 function readLocalInput(){
   let mx=moveVec.x, my=moveVec.y;
@@ -2292,12 +2318,13 @@ function update(){
       p.fireCD--;
       if(p.fireCD<=0 && inp.atk){
         const w=effectiveWeapon(p.weapon);
-        const base=p.aim;
+        // tiny aim assist on the base aim (rewards near-misses; never auto-aims)
+        const base = p.isLocal ? aimAssist(p.x, p.y, p.aim) : p.aim;
         for(let k=0;k<w.pellets;k++){
           const off = w.pellets>1 ? (k-(w.pellets-1)/2)*(w.spread/Math.max(1,w.pellets-1)) : 0;
           const a = base + off + (Math.random()-0.5)*(w.spread*0.15);
           bullets.push({x:p.x,y:p.y,vx:Math.cos(a)*w.speed*0.75,vy:Math.sin(a)*w.speed*0.75,
-            r:w.bulletR||5, dmg:w.dmg, life:Math.round((w.bulletLife||80)/0.75), color:w.color,
+            r:w.bulletR||5, dmg:w.dmg, life:9999, color:w.color,   // full-map range — only removed on hit/out-of-bounds
             pierce:w.pierce, special:w.special, hitList:w.pierce?[]:null});
         }
         p.fireCD=w.fireRate; p.flash=5;
@@ -2344,7 +2371,7 @@ function update(){
       const dist = tp ? Math.hypot(tp.x-e.x,tp.y-e.y) : 1e9;
       if(e.boss){
         updateBoss(e, tp, a, dist);
-      } else if(e.kind==='charger'){
+      } else if(e.kind==='calipso'){
         updateCharger(e, tp, a, dist);
       } else if(e.kind==='melee' || e.melee){
         updateMeleeEnemy(e, tp, a, dist);
@@ -2986,16 +3013,20 @@ function drawAlien(e){
   const fa=e.faceAng||0;
   ctx.save();
   ctx.translate(x,y);
-  // Elite aura: pulsing golden ring behind the body
+  // Elite aura: soft golden halo + pulsing ring (clearly readable, never hides the body)
   if(elite){
-    const pr=r+7+Math.sin(e.wob*1.6)*2.2;
-    ctx.globalAlpha=0.55; ctx.strokeStyle='#ffe27a'; ctx.lineWidth=2.5;
+    const t=performance.now()*0.004;
+    const pr=r+9+Math.sin(e.wob*1.6)*2.5;
+    const g=ctx.createRadialGradient(0,0,r*0.45,0,0,pr+12);
+    g.addColorStop(0,'rgba(255,210,77,0)');
+    g.addColorStop(0.7,'rgba(255,205,70,0.32)');
+    g.addColorStop(1,'rgba(255,205,70,0)');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(0,0,pr+12,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha=0.7+0.25*Math.sin(t); ctx.strokeStyle='#ffe89a'; ctx.lineWidth=2.5;
     ctx.beginPath(); ctx.arc(0,0,pr,0,Math.PI*2); ctx.stroke();
-    ctx.globalAlpha=0.15; ctx.fillStyle='#ffd24d';
-    ctx.beginPath(); ctx.arc(0,0,pr,0,Math.PI*2); ctx.fill();
     ctx.globalAlpha=1;
   }
-  if(kind==='charger')      drawChargerBody(e, r, wob, elite, fa);
+  if(kind==='calipso')      drawChargerBody(e, r, wob, elite, fa);
   else if(kind==='melee')   drawMeleeBody(e, r, wob, elite, fa);
   else                      drawRangedBody(e, r, wob, elite);
   ctx.restore();
@@ -3781,7 +3812,7 @@ function startGame(){
   shopScreen.classList.add('hidden');
   hud.style.display='flex'; endmsg.style.fontSize='';
   score=0; addScore(0);
-  resetLocalPlayer(); buildWorld(); nextMissileTime=performance.now()+10000; startLevel(0, true); state='play';
+  resetLocalPlayer(); buildWorld(); nextMissileTime=performance.now()+nextMissileDelay(); startLevel(0, true); state='play';
 }
 function goToMenu(){
   overScreen.classList.add('hidden'); lobbyScreen.classList.add('hidden');
