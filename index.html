@@ -850,7 +850,7 @@ const KIND={
 const ELITE={ hpMul:1.75, dmgMul:1.6, spdMul:1.14, rMul:1.25, scoreMul:2.6, coinBonus:3 };  // elites ~25% bigger
 
 // Base hp / contact damage grow smoothly with the level number.
-function enemyBaseHp(lvl){ return 2 + lvl*0.6; }      // L1≈2.6  L20≈14  L50≈32
+function enemyBaseHp(lvl){ return (2 + lvl*0.6) * 0.5; }   // HP halved for faster, more dynamic fights
 function meleeHitDmg(lvl){ return 6 + lvl*0.22; }     // L1≈6.2  L50≈17
 function chargerHitDmg(lvl){ return 12 + lvl*0.36; }  // L1≈12.4 L50≈30
 
@@ -1161,6 +1161,16 @@ function isGoldenWeapon(k){ return GOLDEN_WEAPONS.indexOf(k)>=0; }
 // ---- Weapon shop prices (coins) ----
 const WEAPON_PRICES={pistol:0, rifle:50, ak:100, shotgun:75, smg:80, scar:300, goldshotgun:350};
 
+// ---- Elemental power-ups (temporary): 2x damage + elemental bullet FX ----
+const POWER_DUR = 12*60;          // duration in frames (12s) — easily configurable
+const POWER_SPAWN_CHANCE = 0.33;  // 33% chance per round to drop ONE elemental power-up
+const POWERUPS = {
+  fire: { name:'FIRE BULLETS',  color:'#ff6a1a', glow:'#ffb04a', icon:'🔥' },
+  ice:  { name:'ICE BULLETS',   color:'#5ad1ff', glow:'#bfefff', icon:'❄' },
+  elec: { name:'SHOCK BULLETS', color:'#eaf4ff', glow:'#7ab0ff', icon:'⚡' },
+};
+const POWER_KEYS = ['fire','ice','elec'];
+
 // ============================================================
 //  BETA FLAG — temporary test settings. Set BETA=false to restore normal play
 //  (pistol default, coin-gated weapon unlocks). The unlock system stays intact.
@@ -1320,6 +1330,7 @@ function sfx(type){
   let f=440,dur=0.08,vol=0.06,wave='square',slide=0;
   if(type==='shoot'){ f=200; dur=0.05; vol=0.035; wave='square'; }
   else if(type==='portal'){ f=150; dur=0.5; vol=0.07; wave='sine'; slide=2.6; } // rising alien shimmer
+  else if(type==='power'){ f=330; dur=0.34; vol=0.1; wave='triangle'; slide=1.6; } // power-up pickup zing
   else if(type==='enemyDie'){ f=130; dur=0.13; vol=0.06; wave='triangle'; slide=-0.6; }
   else if(type==='hurt'){ f=85; dur=0.18; vol=0.09; wave='sawtooth'; slide=-0.4; }
   else if(type==='pickup'){ f=660; dur=0.13; vol=0.07; wave='sine'; slide=0.6; }
@@ -1846,7 +1857,7 @@ function spawnMissileBarrage(){
   }
 }
 // each barrage schedules the next one randomly at 5s OR 10s (no fixed pattern)
-function nextMissileDelay(){ return (Math.random()<0.5 ? 5000 : 10000); }
+function nextMissileDelay(){ return [3000,6000,9000][Math.floor(Math.random()*3)]; }  // random 3/6/9s, no pattern
 function updateMissiles(){
   const now=performance.now();
   if(!nextMissileTime) nextMissileTime=now+nextMissileDelay();
@@ -1933,6 +1944,13 @@ function startLevel(idx, fresh){
   for(let i=0;i<sCount;i++){
     pickups.push(spawnPickup('shield', null));
   }
+  // elemental power-up: 33% chance per round to drop ONE (fire / ice / electric)
+  if(Math.random() < POWER_SPAWN_CHANCE){
+    const pk=spawnPickup('power', null);
+    pk.power = POWER_KEYS[Math.floor(Math.random()*POWER_KEYS.length)];
+    pk.r = 18;
+    pickups.push(pk);
+  }
   lvlText.textContent=cfg.name;
   bossWrap.classList.remove('show');
   updateHUD();
@@ -1970,7 +1988,8 @@ function spawnBoss(){
   const b=LEVELS[level].boss;
   const ref=alivePlayers()[0]||{x:MAP_W/2,y:MAP_H/2};
   bossZones=[]; shockwaves=[]; bossBeam=null;
-  boss={x:ref.x, y:ref.y-450, r:42, hp:b.hp, maxHp:b.hp, speed:b.speed,
+  const bhp=Math.round(b.hp*0.5);   // bosses also at 50% HP (behaviour/abilities unchanged)
+  boss={x:ref.x, y:ref.y-450, r:42, hp:bhp, maxHp:bhp, speed:b.speed,
         fireRate:b.fireRate, fireCD:60, color:b.color, name:b.name, skin:b.skin||'tentacle', boss:true, pattern:0,
         // ability/phase AI
         phase:1, abilCD:90, abil:null, abilState:'idle', abilT:0, lastAbil:'',
@@ -2139,9 +2158,10 @@ function controlLayout(){
   // inset the on-screen sticks by the iOS safe areas so they stay reachable and
   // never sit under the notch / Dynamic Island / home indicator
   const sl=safeInsets.left, sr=safeInsets.right, sb=safeInsets.bottom;
+  const vr=JOY_R*0.5;   // controls are drawn at half size (input range unchanged)
   return {
-    joyHome:{ x: sl+pad+JOY_R+10,       y: H-sb-pad-JOY_R-10 },
-    aimHome:{ x: W-sr-pad-AIM_JOY_R-10, y: H-sb-pad-AIM_JOY_R-10 }
+    joyHome:{ x: sl+pad+vr+10,       y: H-sb-pad-vr-10 },
+    aimHome:{ x: W-sr-pad-vr-10,     y: H-sb-pad-vr-10 }
   };
 }
 
@@ -2235,6 +2255,16 @@ function spawnParticles(x,y,color,n){
     particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1,color});
   }
 }
+// bullet hit burst — elemental (fire/ice/electric) or default sparks
+function bulletImpact(b, x, y){
+  if(b.elem){
+    const pu=POWERUPS[b.elem];
+    spawnParticles(x,y,pu.color,11); spawnParticles(x,y,pu.glow,6);
+    if(b.elem==='fire') addShake(0.12);   // fiery burst gives a tiny kick
+  } else {
+    spawnParticles(x,y,'#f5d77a',6);
+  }
+}
 // Fixed circular attack range, same in every direction.
 // Uses half the smaller visible dimension so the range always fits on screen.
 function attackRange(){ return (Math.min(VW, VH) / 2) * 1.25; }
@@ -2263,7 +2293,7 @@ function nearestPlayerTo(e){
 //      passes very close to an enemy, nudge it just enough to graze the target.
 //      If it already hits, or nothing is within the small margin, leave `a` alone. ----
 function aimAssist(px, py, a){
-  const RANGE=1000, MAX_CORRECT=0.085;   // ~5° hard cap — stays imperceptible
+  const RANGE=1100, MAX_CORRECT=0.20;   // ~11° cap — noticeable but never auto-aim
   const dx=Math.cos(a), dy=Math.sin(a);
   let best=null, bestPerp=1e9;
   for(const e of enemies){
@@ -2273,7 +2303,7 @@ function aimAssist(px, py, a){
     if(along<=0 || along>RANGE) continue; // behind the player or out of range
     const perp=Math.abs(-rx*dy+ry*dx);   // perpendicular distance from the shot line
     if(perp < e.r) return a;              // already a clean hit → don't touch the aim
-    if(perp < e.r+24 && perp < bestPerp){ best=e; bestPerp=perp; }  // near-miss within margin
+    if(perp < e.r+60 && perp < bestPerp){ best=e; bestPerp=perp; }  // wider assist margin
   }
   if(!best) return a;
   // rotate just enough toward the target, clamped so the correction is barely felt
@@ -2340,18 +2370,22 @@ function update(){
         const w=effectiveWeapon(p.weapon);
         // tiny aim assist on the base aim (rewards near-misses; never auto-aims)
         const base = p.isLocal ? aimAssist(p.x, p.y, p.aim) : p.aim;
+        const elem = p.powerTimer>0 ? p.powerType : null;   // active elemental power-up
+        const bcol = elem ? POWERUPS[elem].color : w.color;
+        const bdmg = elem ? w.dmg*2 : w.dmg;                // 2x damage while powered
         for(let k=0;k<w.pellets;k++){
           const off = w.pellets>1 ? (k-(w.pellets-1)/2)*(w.spread/Math.max(1,w.pellets-1)) : 0;
           const a = base + off + (Math.random()-0.5)*(w.spread*0.15);
           bullets.push({x:p.x,y:p.y,vx:Math.cos(a)*w.speed*0.75,vy:Math.sin(a)*w.speed*0.75,
-            r:w.bulletR||5, dmg:w.dmg, life:9999, color:w.color,   // full-map range — only removed on hit/out-of-bounds
-            pierce:w.pierce, special:w.special, hitList:w.pierce?[]:null});
+            r:(w.bulletR||5)+(elem?1.5:0), dmg:bdmg, life:9999, color:bcol,   // full-map range
+            pierce:w.pierce, special:w.special, elem:elem, hitList:w.pierce?[]:null});
         }
         p.fireCD=w.fireRate; p.flash=5;
         if(p.isLocal) sfx('shoot');
       }
       if(p.flash>0)p.flash--;
       if(p.invuln>0)p.invuln--;
+      if(p.powerTimer>0) p.powerTimer--;   // count down the elemental power-up
     }
 
     // camera follows the local player
@@ -2366,6 +2400,11 @@ function update(){
     // ---- Player bullets ----
     for(let i=bullets.length-1;i>=0;i--){
       const b=bullets[i]; b.x+=b.vx; b.y+=b.vy; b.life--;
+      // elemental trail (fire/ice/electric) behind the bullet
+      if(b.elem && gfx.quality>0.55 && (i&1)===0 && particles.length<MAX_PARTICLES){
+        const pu=POWERUPS[b.elem];
+        particles.push({x:b.x,y:b.y,vx:(Math.random()-0.5)*0.6,vy:(Math.random()-0.5)*0.6,life:0.5,color:(Math.random()<0.5?pu.color:pu.glow)});
+      }
       let remove=false;
       for(const e of enemies){
         if(Math.hypot(e.x-b.x,e.y-b.y)<e.r+b.r){
@@ -2373,10 +2412,10 @@ function update(){
             // piercing bullet (SCAR): damages each enemy once, passes through up to b.pierce of them
             if(b.hitList.indexOf(e)>=0) continue;
             b.hitList.push(e);
-            e.hp-=b.dmg; spawnParticles(b.x,b.y, b.color||'#ffd24d', 9);
+            e.hp-=b.dmg; bulletImpact(b, b.x, b.y);
             if(b.hitList.length>b.pierce){ remove=true; break; }
           } else {
-            e.hp-=b.dmg; spawnParticles(b.x,b.y,'#f5d77a',6); remove=true; break;
+            e.hp-=b.dmg; bulletImpact(b, b.x, b.y); remove=true; break;
           }
         }
       }
@@ -2465,10 +2504,13 @@ function update(){
       for(const p of players){
         if(p.out) continue;
         if(Math.hypot(pk.x-p.x,pk.y-p.y) < pk.r+p.r){
-          if(pk.kind==='health'){ p.hp=Math.min(p.maxHp,p.hp+40); spawnParticles(pk.x,pk.y,'#ffffff',16); if(p.isLocal) showToast('+40 HP'); }
-          else if(pk.kind==='shield'){ p.shield=Math.min(p.maxShield,(p.shield||0)+50); spawnParticles(pk.x,pk.y,'#5ad1ff',16); if(p.isLocal) showToast('+50 SHIELD'); }
-          else if(pk.kind==='weapon'){ p.weapon=pk.weapon; spawnParticles(pk.x,pk.y,WEAPONS[pk.weapon].color,16); if(p.isLocal) showToast(WEAPONS[pk.weapon].name+'!'); }
-          if(p.isLocal){ sfx('pickup'); haptic(15); }
+          if(pk.kind==='health'){ p.hp=Math.min(p.maxHp,p.hp+40); spawnParticles(pk.x,pk.y,'#ffffff',16); if(p.isLocal){ sfx('pickup'); showToast('+40 HP'); } }
+          else if(pk.kind==='shield'){ p.shield=Math.min(p.maxShield,(p.shield||0)+50); spawnParticles(pk.x,pk.y,'#5ad1ff',16); if(p.isLocal){ sfx('pickup'); showToast('+50 SHIELD'); } }
+          else if(pk.kind==='weapon'){ p.weapon=pk.weapon; spawnParticles(pk.x,pk.y,WEAPONS[pk.weapon].color,16); if(p.isLocal){ sfx('pickup'); showToast(WEAPONS[pk.weapon].name+'!'); } }
+          else if(pk.kind==='power'){ const pu=POWERUPS[pk.power]; p.powerType=pk.power; p.powerTimer=POWER_DUR;
+            spawnParticles(pk.x,pk.y,pu.color,20); spawnParticles(pk.x,pk.y,pu.glow,12);
+            if(p.isLocal){ sfx('power'); haptic([20,30,40]); showToast(pu.icon+' '+pu.name+' 2x'); } }
+          if(p.isLocal) haptic(15);
           taken=true; break;
         }
       }
@@ -2935,7 +2977,13 @@ function render(){
   }
   // player bullets
   for(const b of bullets){
-    if(b.special==='gold'){
+    if(b.elem){
+      // elemental round: glowing colored aura + bright white-hot core
+      const pu=POWERUPS[b.elem];
+      ctx.globalAlpha=0.4; circle(b.x,b.y,b.r+6,pu.glow); ctx.globalAlpha=1;
+      circle(b.x,b.y,b.r+1,pu.color);
+      circle(b.x,b.y,b.r*0.55,'#ffffff');
+    } else if(b.special==='gold'){
       // golden SCAR rounds: glowing tracer with a bright core
       ctx.globalAlpha=0.35; circle(b.x,b.y,b.r+6,'#ffe9a0'); ctx.globalAlpha=1;
       circle(b.x,b.y,b.r,'#ffcf3a');
@@ -2978,6 +3026,17 @@ function render(){
       const rng=attackRange();
       ctx.strokeStyle='rgba(245,215,122,0.15)'; ctx.lineWidth=2;
       ctx.beginPath(); ctx.arc(p.x-cam.x, p.y-cam.y, rng, 0, Math.PI*2); ctx.stroke();
+    }
+    // elemental power aura (weapon empowered) — drawn under the soldier
+    if(p.powerTimer>0){
+      const pu=POWERUPS[p.powerType], px=p.x-cam.x, py=p.y-cam.y, tt=performance.now()*0.005;
+      ctx.globalAlpha=0.28+0.16*Math.sin(tt*2); ctx.fillStyle=pu.glow;
+      ctx.beginPath(); ctx.arc(px,py,p.r+8,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1;
+      ctx.strokeStyle=pu.color; ctx.lineWidth=2; ctx.globalAlpha=0.6+0.3*Math.sin(tt*3);
+      ctx.beginPath(); ctx.arc(px,py,p.r+8+Math.sin(tt*2)*2,0,Math.PI*2); ctx.stroke(); ctx.globalAlpha=1;
+      // fading timer arc (shows remaining duration)
+      ctx.strokeStyle=pu.glow; ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.arc(px,py,p.r+13,-Math.PI/2,-Math.PI/2+Math.PI*2*(p.powerTimer/POWER_DUR)); ctx.stroke();
     }
     const blink = p.invuln>0 && Math.floor(p.invuln/6)%2===0;
     if(!blink) drawSoldier(p);
@@ -3410,6 +3469,22 @@ function drawPickup(pk){
   ctx.save();
   ctx.translate(x,y);
 
+  if(pk.kind==='power'){
+    const pu=POWERUPS[pk.power], t=performance.now()*0.004;
+    ctx.globalAlpha=0.28+0.22*Math.sin(t*2); ctx.fillStyle=pu.glow;   // pulsing elemental halo
+    ctx.beginPath(); ctx.arc(0,0,pk.r+11,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1;
+    const g=ctx.createRadialGradient(-pk.r*0.3,-pk.r*0.3,2,0,0,pk.r);
+    g.addColorStop(0,'#ffffff'); g.addColorStop(0.45,pu.glow); g.addColorStop(1,pu.color);
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(0,0,pk.r,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle=pu.color; ctx.lineWidth=2; ctx.stroke();
+    ctx.fillStyle=pu.color;
+    for(let i=0;i<3;i++){ const a=t*2+i*2.09, d=pk.r+6; ctx.globalAlpha=0.85; ctx.beginPath(); ctx.arc(Math.cos(a)*d,Math.sin(a)*d,2.2,0,Math.PI*2); ctx.fill(); }
+    ctx.globalAlpha=1;
+    ctx.font='bold '+Math.floor(pk.r*1.05)+'px Trebuchet MS'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(pu.icon, 0, 1);
+    ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+    ctx.restore(); return;
+  }
   if(pk.kind==='health'){
     // glowing medkit (white glow — no green on Mars)
     ctx.globalAlpha=0.25; ctx.fillStyle='#ffffff';
@@ -3741,29 +3816,36 @@ function drawSoldier(p){
 
 function drawControls(){
   const L=controlLayout();
+  // Half-size visuals (VIS) but FULL input range: the knob is drawn at half the
+  // real deflection so it stays inside the small ring — sensitivity is unchanged.
+  const VIS=0.5, BR=JOY_R*VIS, KR=15;
   // movement joystick (left)
   const bx = joy.active ? joy.cx : L.joyHome.x;
   const by = joy.active ? joy.cy : L.joyHome.y;
-  ctx.fillStyle='rgba(60,45,90,0.35)';
-  ctx.strokeStyle='rgba(202,163,255,0.6)'; ctx.lineWidth=2;
-  ctx.beginPath(); ctx.arc(bx,by,JOY_R,0,Math.PI*2); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = joy.active ? 'rgba(202,163,255,0.75)' : 'rgba(202,163,255,0.45)';
-  ctx.beginPath(); ctx.arc(bx+joy.dx, by+joy.dy, 30, 0, Math.PI*2); ctx.fill();
+  ctx.globalAlpha = joy.active ? 0.6 : 0.4;   // translucent; brighter while used
+  ctx.fillStyle='rgba(66,48,100,0.85)';
+  ctx.strokeStyle='rgba(202,163,255,0.95)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.arc(bx,by,BR,0,Math.PI*2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='rgba(202,163,255,0.95)';
+  ctx.beginPath(); ctx.arc(bx+joy.dx*VIS, by+joy.dy*VIS, KR, 0, Math.PI*2); ctx.fill();
+  ctx.globalAlpha=1;
 
   // aim joystick (right) — drag to aim, triggers auto-fire
   const ax = aimJoy.active ? aimJoy.cx : L.aimHome.x;
   const ay = aimJoy.active ? aimJoy.cy : L.aimHome.y;
   const firing = aimJoy.active && Math.hypot(aimJoy.dx,aimJoy.dy)>8;
-  ctx.fillStyle = firing ? 'rgba(255,90,122,0.32)' : 'rgba(245,180,60,0.20)';
-  ctx.strokeStyle = firing ? 'rgba(255,90,122,0.85)' : 'rgba(245,215,122,0.60)'; ctx.lineWidth=2;
-  ctx.beginPath(); ctx.arc(ax,ay,AIM_JOY_R,0,Math.PI*2); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = firing ? 'rgba(255,90,122,0.90)' : 'rgba(245,215,122,0.45)';
-  ctx.beginPath(); ctx.arc(ax+aimJoy.dx, ay+aimJoy.dy, 30, 0, Math.PI*2); ctx.fill();
+  ctx.globalAlpha = aimJoy.active ? 0.6 : 0.4;
+  ctx.fillStyle = firing ? 'rgba(255,90,122,0.7)' : 'rgba(245,180,60,0.5)';
+  ctx.strokeStyle = firing ? 'rgba(255,90,122,0.95)' : 'rgba(245,215,122,0.9)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.arc(ax,ay,BR,0,Math.PI*2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = firing ? 'rgba(255,90,122,0.95)' : 'rgba(245,215,122,0.9)';
+  ctx.beginPath(); ctx.arc(ax+aimJoy.dx*VIS, ay+aimJoy.dy*VIS, KR, 0, Math.PI*2); ctx.fill();
   ctx.fillStyle = firing ? '#ffffff' : '#f5d77a';
-  ctx.font='bold '+Math.floor(AIM_JOY_R*0.44)+'px Trebuchet MS';
+  ctx.font='bold '+Math.floor(BR*0.55)+'px Trebuchet MS';
   ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText('⚔', ax, ay+2);
+  ctx.fillText('⚔', ax, ay+1);
   ctx.textBaseline='alphabetic';
+  ctx.globalAlpha=1;
 }
 
 // ---- Nearest-enemy alert (Fortnite-style): reticle if on screen, edge arrow if off screen ----
