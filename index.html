@@ -480,6 +480,14 @@
     opacity:0; animation:bsHintIn .6s ease 1s forwards, bsPulse 1.5s ease-in-out 1.6s infinite; }
   @keyframes bsHintIn { to{ opacity:.9; } }
   @keyframes bsPulse { 0%,100%{ opacity:.9; } 50%{ opacity:.35; } }
+  /* ===== Google account link button (top bar) ===== */
+  .authPill { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:30px;
+    background:rgba(120,90,180,0.20); border:1px solid rgba(202,163,255,0.40); color:#e8e6f5;
+    font-size:13px; font-weight:bold; cursor:pointer; -webkit-tap-highlight-color:transparent;
+    white-space:nowrap; line-height:1; }
+  .authPill:active { background:rgba(120,90,180,0.34); }
+  .authPill .authIco { font-size:14px; }
+  @media (max-width:560px) { .authPill .authTxt { display:none; } }
 </style>
 </head>
 <body>
@@ -539,6 +547,7 @@
         <div class="statPill"><span class="statIco">🏆</span><span id="hiscoreMenu">0</span></div>
         <div class="statPill gold"><span class="statIco">🪙</span><span id="coinsMenu">0</span></div>
         <div class="statPill ruby"><span class="rubyIco"></span><span id="rubiesMenu">0</span></div>
+        <button class="authPill" id="authBtn" style="display:none"><span class="authIco">🔗</span><span class="authTxt">Vincular Google</span></button>
       </div>
       <div class="title menuTitle">SHOOTER ARENA</div>
       <div class="topRight">
@@ -574,7 +583,7 @@
 
         <!-- Pane 3 · Ranking -->
         <div class="menuPane" id="paneRanking">
-          <div class="rankHeader">★ Top Scores ★</div>
+          <div class="rankHeader" id="rankHeader">★ Top Scores ★</div>
           <div id="leaderboardMenu" class="board"></div>
         </div>
 
@@ -4276,6 +4285,161 @@ if('serviceWorker' in navigator){
     navigator.serviceWorker.register('sw.js').catch(()=>{});
   });
 }
+</script>
+
+<!-- ===================== Firebase: Google login + cloud saves + global ranking ===================== -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+(function(){
+  // ============================================================
+  //  PEGA AQUI LA CONFIG PUBLICA DE TU PROYECTO FIREBASE
+  //  (Firebase Console → ⚙ Configuracion del proyecto → Tus apps → Web → SDK)
+  //  Es informacion PUBLICA y segura de incrustar; la seguridad la dan las reglas de Firestore.
+  // ============================================================
+  const firebaseConfig = {
+    apiKey: "AIzaSyCOhHfTzcHIFuMTJ5W3JpauAMuqjt5my0Q",
+    authDomain: "shooter-arena-a33af.firebaseapp.com",
+    projectId: "shooter-arena-a33af",
+    storageBucket: "shooter-arena-a33af.firebasestorage.app",
+    messagingSenderId: "268758101901",
+    appId: "1:268758101901:web:9c9d1933f30c9a239257c4"
+  };
+  // ============================================================
+
+  const authBtn  = document.getElementById('authBtn');
+  const rankHead = document.getElementById('rankHeader');
+  const boardEl  = document.getElementById('leaderboardMenu');
+  const ENABLED  = !!(window.firebase) && /^AIza/.test(firebaseConfig.apiKey || '');   // only turns on with a real apiKey
+  if(!ENABLED){ if(authBtn) authBtn.style.display='none'; return; }   // no configurado → juego offline normal
+
+  const SYNC_KEYS=['bk_owned_weapons','bk_equipped_weapon','bk_upg','bk_money','bk_rubies','bk_char','bk_settings','bk_highscore','bk_scores','bk_last_daily','bk_lastname'];
+  let db, auth, user=null, pulling=false, saveTimer=null, globalCache=null;
+
+  const num=v=>{ const n=parseInt(v,10); return isNaN(n)?0:n; };
+  const jparse=(v,f)=>{ try{ return JSON.parse(v); }catch(e){ return f; } };
+  const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function snap(){ const o={}; for(const k of SYNC_KEYS){ const v=localStorage.getItem(k); if(v!=null) o[k]=v; } return o; }
+  function writeLocal(o){ for(const k in o){ try{ localStorage.setItem(k,o[k]); }catch(e){} } }
+
+  // Merge local device data with cloud data (never lose progress).
+  function merge(loc, cld){
+    const out=Object.assign({}, loc);
+    for(const k of ['bk_money','bk_rubies','bk_highscore']) out[k]=String(Math.max(num(loc[k]),num(cld[k])));
+    { const a=jparse(loc.bk_owned_weapons,[])||[], b=jparse(cld.bk_owned_weapons,[])||[];
+      out.bk_owned_weapons=JSON.stringify(Array.from(new Set([].concat(a,b)))); }
+    { const a=jparse(loc.bk_upg,{})||{}, b=jparse(cld.bk_upg,{})||{}, m=Object.assign({},a);
+      for(const k in b) m[k]=Math.max(num(a[k]),num(b[k])); out.bk_upg=JSON.stringify(m); }
+    { const a=jparse(loc.bk_scores,[])||[], b=jparse(cld.bk_scores,[])||[];
+      out.bk_scores=JSON.stringify([].concat(a,b).sort((x,y)=>(y.score||0)-(x.score||0)).slice(0,20)); }
+    for(const k of ['bk_settings','bk_char','bk_equipped_weapon','bk_lastname','bk_last_daily'])
+      if(cld[k]!=null) out[k]=cld[k]; else if(loc[k]!=null) out[k]=loc[k];
+    return out;
+  }
+
+  function playerName(){
+    return ((user && (user.displayName||'').trim()) ||
+            (localStorage.getItem('bk_lastname')||'').trim() ||
+            (user && user.email ? user.email.split('@')[0] : 'PLAYER'));
+  }
+
+  function pushCloud(){
+    if(!user) return;
+    db.collection('users').doc(user.uid).set(
+      { data:snap(), name:playerName(), updatedAt:firebase.firestore.FieldValue.serverTimestamp() }, {merge:true}).catch(()=>{});
+    const best=num(localStorage.getItem('bk_highscore'));
+    if(best>0) db.collection('leaderboard').doc(user.uid).set(
+      { name:playerName().toUpperCase().slice(0,14), score:best, ts:firebase.firestore.FieldValue.serverTimestamp() }, {merge:true}).catch(()=>{});
+  }
+  function queuePush(){ if(!user) return; clearTimeout(saveTimer); saveTimer=setTimeout(pushCloud,1200); }
+
+  async function pullMerge(){
+    if(!user || pulling) return; pulling=true;
+    try{
+      const doc=await db.collection('users').doc(user.uid).get();
+      const cld=(doc.exists && doc.data() && doc.data().data) ? doc.data().data : {};
+      const loc=snap(), merged=merge(loc,cld);
+      writeLocal(merged);
+      await db.collection('users').doc(user.uid).set(
+        { data:merged, name:playerName(), updatedAt:firebase.firestore.FieldValue.serverTimestamp() }, {merge:true}).catch(()=>{});
+      pushCloud();
+      // if the cloud held real progress that changed local, reload once so the game reflects it
+      if(Object.keys(cld).length && JSON.stringify(loc)!==JSON.stringify(merged) && !sessionStorage.getItem('bk_cloud_pulled')){
+        sessionStorage.setItem('bk_cloud_pulled','1'); location.reload();
+      }
+    }catch(e){}
+    pulling=false;
+  }
+
+  // ---- Global ranking (LIVE): an onSnapshot listener keeps the top 25 fresh in real time ----
+  let lbUnsub=null;
+  function renderGlobal(el){
+    if(!globalCache){ el.innerHTML='<div class="empty">Cargando ranking global…</div>'; return; }
+    if(!globalCache.length){ el.innerHTML='<div class="empty">Aún no hay puntajes — ¡sé el primero!</div>'; return; }
+    el.innerHTML=globalCache.map((e,i)=>'<div class="row'+(e.me?' me':'')+'"><span class="rank">'+(i+1)+
+      '</span><span class="nm">'+esc(e.name)+'</span><span class="sc">'+e.score+'</span></div>').join('');
+  }
+  function startLeaderboard(){
+    if(lbUnsub) return;
+    lbUnsub=db.collection('leaderboard').orderBy('score','desc').limit(25).onSnapshot(qs=>{
+      const arr=[]; qs.forEach(d=>{ const x=d.data()||{}; arr.push({ name:x.name||'PLAYER', score:x.score||0, me:(user&&d.id===user.uid) }); });
+      globalCache=arr;
+      if(boardEl && boardEl.offsetParent!==null) renderGlobal(boardEl);   // repaint if the ranking pane is open
+    }, ()=>{});
+  }
+  function stopLeaderboard(){ if(lbUnsub){ try{ lbUnsub(); }catch(e){} lbUnsub=null; } globalCache=null; }
+  if(typeof renderBoard==='function'){
+    const _rb=renderBoard;
+    renderBoard=function(el,max,hi){
+      if(el && el===boardEl && user){ renderGlobal(el); return; }   // live global board (kept fresh by the listener)
+      return _rb(el,max,hi);
+    };
+  }
+
+  // ---- Push to cloud whenever the game saves anything ----
+  ['saveMoney','saveRubies','saveUpg','saveSettings','saveOwnedWeapons','saveEquippedWeapon','persistScores','addScoreEntry'].forEach(fn=>{
+    if(typeof window[fn]==='function'){ const o=window[fn]; window[fn]=function(){ const r=o.apply(this,arguments); queuePush(); return r; }; }
+  });
+  window.addEventListener('pagehide', ()=>{ if(user) pushCloud(); });
+  document.addEventListener('visibilitychange', ()=>{ if(document.hidden && user) pushCloud(); });
+
+  // ---- Auth UI ----
+  const isMobile=()=>matchMedia('(pointer:coarse)').matches;
+  function updateUI(){
+    if(authBtn){
+      authBtn.style.display='';
+      if(user){ authBtn.innerHTML='<span class="authIco">👤</span><span class="authTxt">'+esc(playerName().slice(0,10))+'</span>'; authBtn.title='Cerrar sesión'; }
+      else    { authBtn.innerHTML='<span class="authIco">🔗</span><span class="authTxt">Vincular Google</span>'; authBtn.title='Guardar en la nube y entrar al ranking global'; }
+    }
+    if(rankHead) rankHead.textContent = user ? '🌎 RANKING GLOBAL' : '★ Top Scores ★';
+  }
+  function login(){
+    const p=new firebase.auth.GoogleAuthProvider();
+    if(isMobile()) auth.signInWithRedirect(p);
+    else auth.signInWithPopup(p).catch(()=>auth.signInWithRedirect(p));
+  }
+  if(authBtn) authBtn.onclick=()=>{
+    if(user){ if(confirm('¿Cerrar sesión? Tus datos quedan guardados en la nube.')) auth.signOut().catch(()=>{}); }
+    else login();
+  };
+
+  // ---- Init ----
+  try{
+    firebase.initializeApp(firebaseConfig);
+    auth=firebase.auth(); db=firebase.firestore();
+    try{ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL); }catch(e){}
+    auth.getRedirectResult().catch(()=>{});
+    auth.onAuthStateChanged(u=>{
+      user=u||null;
+      if(user){ pullMerge(); startLeaderboard(); }
+      else { sessionStorage.removeItem('bk_cloud_pulled'); stopLeaderboard(); }
+      updateUI();
+      try{ if(typeof updateMenuHiscore==='function') updateMenuHiscore(); }catch(e){}
+    });
+    updateUI();
+  }catch(e){ if(authBtn) authBtn.style.display='none'; }
+})();
 </script>
 </body>
 </html>

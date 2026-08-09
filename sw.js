@@ -1,5 +1,5 @@
 // Shooter Arena service worker
-const CACHE = 'shooter-arena-v44';
+const CACHE = 'shooter-arena-v45';
 const ASSETS = [
   'index.html',
   'manifest.json',
@@ -31,6 +31,7 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
+  if (url.origin !== location.origin) return;  // never intercept cross-origin (Firebase / Google) traffic
   const isPage = e.request.mode === 'navigate'
     || url.pathname.endsWith('/')
     || url.pathname.endsWith('/index.html')
