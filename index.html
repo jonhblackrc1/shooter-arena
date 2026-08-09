@@ -4417,14 +4417,20 @@ if('serviceWorker' in navigator){
   async function login(){
     const p=new firebase.auth.GoogleAuthProvider();
     p.setCustomParameters({ prompt:'select_account' });
+    // Mobile: full-page redirect (popups render blank in many mobile browsers).
+    if(isMobile()){
+      try{ await auth.signInWithRedirect(p); }
+      catch(err){ alert('No se pudo iniciar sesión: '+((err&&err.code)||(err&&err.message)||err)); }
+      return;
+    }
+    // Desktop: popup, fall back to redirect if blocked.
     try{
-      await auth.signInWithPopup(p);            // works on modern mobile + desktop; instant feedback
+      await auth.signInWithPopup(p);
     }catch(err){
       const code=err && err.code || '';
-      if(code==='auth/popup-closed-by-user' || code==='auth/cancelled-popup-request') return;  // user backed out
+      if(code==='auth/popup-closed-by-user' || code==='auth/cancelled-popup-request') return;
       if(code==='auth/popup-blocked' || code==='auth/operation-not-supported-in-this-environment'){
-        try{ await auth.signInWithRedirect(p); }
-        catch(e2){ alert('No se pudo iniciar sesión (redirect): '+((e2&&e2.code)||(e2&&e2.message)||e2)); }
+        try{ await auth.signInWithRedirect(p); }catch(e2){ alert('No se pudo iniciar sesión (redirect): '+((e2&&e2.code)||(e2&&e2.message)||e2)); }
         return;
       }
       alert('No se pudo iniciar sesión: '+(code||(err&&err.message)||err));
