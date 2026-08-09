@@ -456,9 +456,53 @@
   @media (orientation:portrait) and (pointer:coarse) and (max-width:900px) {
     #rotateHint { display:flex; }
   }
+  /* ===== Black Studio intro splash — first tap arms fullscreen + landscape ===== */
+  #splash {
+    position:fixed; inset:0; z-index:10000;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px;
+    background:radial-gradient(circle at 50% 42%, #17122a 0%, #0a0712 55%, #07080f 100%);
+    -webkit-tap-highlight-color:transparent; cursor:pointer;
+    transition:opacity .5s ease;
+    padding:calc(env(safe-area-inset-top,0px) + 20px) 20px calc(env(safe-area-inset-bottom,0px) + 20px);
+  }
+  #splash.hide { opacity:0; pointer-events:none; }
+  .bsLogo { display:flex; flex-direction:column; align-items:center; gap:14px;
+    animation:bsIn 1s cubic-bezier(.2,.7,.2,1) both; }
+  @keyframes bsIn { 0%{ opacity:0; transform:translateY(16px) scale(.9); } 100%{ opacity:1; transform:none; } }
+  .bsMark { width:min(30vh,120px); height:min(30vh,120px);
+    filter:drop-shadow(0 8px 26px rgba(176,124,255,.5)); }
+  .bsMark svg { width:100%; height:100%; display:block; }
+  .bsName { font-size:clamp(26px,7vw,40px); font-weight:900; letter-spacing:8px; color:#f4f1ff;
+    line-height:1; text-align:center; text-shadow:0 3px 18px rgba(176,124,255,.35); }
+  .bsName span { display:block; font-size:clamp(15px,4vw,22px); letter-spacing:14px; color:#caa3ff; margin-top:8px; }
+  .bsTag { font-size:clamp(10px,2.6vw,13px); letter-spacing:9px; color:#f5d77a; opacity:.85; }
+  .bsHint { font-size:clamp(12px,3vw,15px); letter-spacing:3px; color:#9b94c4;
+    opacity:0; animation:bsHintIn .6s ease 1s forwards, bsPulse 1.5s ease-in-out 1.6s infinite; }
+  @keyframes bsHintIn { to{ opacity:.9; } }
+  @keyframes bsPulse { 0%,100%{ opacity:.9; } 50%{ opacity:.35; } }
 </style>
 </head>
 <body>
+<div id="splash">
+  <div class="bsLogo">
+    <div class="bsMark">
+      <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-label="Black Studio">
+        <defs>
+          <linearGradient id="bsGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#caa3ff"/>
+            <stop offset="1" stop-color="#f5d77a"/>
+          </linearGradient>
+        </defs>
+        <polygon points="60,5 108,32.5 108,87.5 60,115 12,87.5 12,32.5" fill="none" stroke="url(#bsGrad)" stroke-width="4" stroke-linejoin="round"/>
+        <polygon points="60,20 95,40 95,80 60,100 25,80 25,40" fill="rgba(176,124,255,0.06)"/>
+        <text x="60" y="76" text-anchor="middle" font-family="'Trebuchet MS',sans-serif" font-weight="900" font-size="44" fill="url(#bsGrad)">BS</text>
+      </svg>
+    </div>
+    <div class="bsName">BLACK<span>STUDIO</span></div>
+    <div class="bsTag">GAMES</div>
+  </div>
+  <div class="bsHint">TOCA PARA COMENZAR</div>
+</div>
 <canvas id="game"></canvas>
 <div id="rotateHint">
   <div class="phone"></div>
@@ -702,6 +746,7 @@ window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', ()=>{ setTimeout(resize,120); setTimeout(resize,400); }); // re-measure after iOS settles
 if(window.visualViewport){ window.visualViewport.addEventListener('resize', resize); }
 document.addEventListener('fullscreenchange', ()=>setTimeout(resize,80));
+window.addEventListener('load', ()=>{ resize(); setTimeout(resize,300); });   // re-measure once layout settles on Android
 resize();
 // iOS Safari: block pinch-zoom gestures (double-tap-zoom is already handled by
 // touch-action:manipulation). The game's joysticks use raw touchstart/move, so
@@ -758,6 +803,24 @@ function armFullscreenOnce(){
 }
 window.addEventListener('pointerdown', armFullscreenOnce, {passive:true});
 window.addEventListener('touchend', armFullscreenOnce, {passive:true});
+
+// ---- Black Studio intro splash ----
+// Browsers only grant fullscreen + orientation.lock from a user gesture, so the
+// splash's first tap doubles as that gesture: tap → go fullscreen + landscape → menu.
+(function(){
+  const splash=document.getElementById('splash');
+  if(!splash) return;
+  let done=false;
+  function dismiss(){
+    if(done) return; done=true;
+    try{ goFullscreen(); }catch(e){}          // this tap is the gesture FS/orientation need
+    splash.classList.add('hide');
+    setTimeout(()=>{ splash.style.display='none'; resize(); }, 520);
+  }
+  splash.addEventListener('pointerdown', dismiss, {passive:true});
+  splash.addEventListener('touchend',  dismiss, {passive:true});
+  window.addEventListener('keydown', dismiss, {once:true});   // desktop: any key
+})();
 
 const hud=document.getElementById('hud'), hpfill=document.getElementById('hpfill');
 const shieldbar=document.getElementById('shieldbar'), shieldfill=document.getElementById('shieldfill');
@@ -2148,8 +2211,16 @@ function updateHUD(){
 let moveVec={x:0,y:0};
 let joy={active:false,id:null,cx:0,cy:0,dx:0,dy:0};
 let aimJoy={active:false,id:null,cx:0,cy:0,dx:0,dy:0};
-const JOY_R=70;
-const AIM_JOY_R=70;
+// Functional deflection: how far you drag from the touch point to reach full speed.
+// It now equals the drawn ring (RING_R) so pushing the knob to the EDGE of the visible
+// ring = 100% speed. It used to be 70 while the ring was drawn at only 35, so dragging
+// to the visible edge gave just half speed and movement felt limited. Same visual size,
+// full functionality — as if the control were big. (Aim angle is magnitude-independent,
+// so aiming precision is unchanged; only the reach-to-max distance changed.)
+const JOY_R=35;
+const AIM_JOY_R=35;
+const RING_R=35;   // drawn ring radius — visual size, unchanged
+const KNOB_R=15;   // drawn knob radius — unchanged
 // PC mouse aim
 let mouseScreenX=0, mouseScreenY=0, mouseFireHeld=false;
 
@@ -2158,7 +2229,7 @@ function controlLayout(){
   // inset the on-screen sticks by the iOS safe areas so they stay reachable and
   // never sit under the notch / Dynamic Island / home indicator
   const sl=safeInsets.left, sr=safeInsets.right, sb=safeInsets.bottom;
-  const vr=JOY_R*0.5;   // controls are drawn at half size (input range unchanged)
+  const vr=RING_R;   // rest position based on the drawn ring size (placement unchanged)
   return {
     joyHome:{ x: sl+pad+vr+10,       y: H-sb-pad-vr-10 },
     aimHome:{ x: W-sr-pad-vr-10,     y: H-sb-pad-vr-10 }
@@ -3816,9 +3887,9 @@ function drawSoldier(p){
 
 function drawControls(){
   const L=controlLayout();
-  // Half-size visuals (VIS) but FULL input range: the knob is drawn at half the
-  // real deflection so it stays inside the small ring — sensitivity is unchanged.
-  const VIS=0.5, BR=JOY_R*VIS, KR=15;
+  // Ring is drawn at RING_R; the knob rides to the ring edge at full deflection
+  // (normalized to the functional radius) so the visible size is unchanged.
+  const BR=RING_R, KR=KNOB_R;
   // movement joystick (left)
   const bx = joy.active ? joy.cx : L.joyHome.x;
   const by = joy.active ? joy.cy : L.joyHome.y;
@@ -3827,7 +3898,7 @@ function drawControls(){
   ctx.strokeStyle='rgba(202,163,255,0.95)'; ctx.lineWidth=2;
   ctx.beginPath(); ctx.arc(bx,by,BR,0,Math.PI*2); ctx.fill(); ctx.stroke();
   ctx.fillStyle='rgba(202,163,255,0.95)';
-  ctx.beginPath(); ctx.arc(bx+joy.dx*VIS, by+joy.dy*VIS, KR, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(bx+joy.dx/JOY_R*RING_R, by+joy.dy/JOY_R*RING_R, KR, 0, Math.PI*2); ctx.fill();
   ctx.globalAlpha=1;
 
   // aim joystick (right) — drag to aim, triggers auto-fire
@@ -3839,7 +3910,7 @@ function drawControls(){
   ctx.strokeStyle = firing ? 'rgba(255,90,122,0.95)' : 'rgba(245,215,122,0.9)'; ctx.lineWidth=2;
   ctx.beginPath(); ctx.arc(ax,ay,BR,0,Math.PI*2); ctx.fill(); ctx.stroke();
   ctx.fillStyle = firing ? 'rgba(255,90,122,0.95)' : 'rgba(245,215,122,0.9)';
-  ctx.beginPath(); ctx.arc(ax+aimJoy.dx*VIS, ay+aimJoy.dy*VIS, KR, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(ax+aimJoy.dx/AIM_JOY_R*RING_R, ay+aimJoy.dy/AIM_JOY_R*RING_R, KR, 0, Math.PI*2); ctx.fill();
   ctx.fillStyle = firing ? '#ffffff' : '#f5d77a';
   ctx.font='bold '+Math.floor(BR*0.55)+'px Trebuchet MS';
   ctx.textAlign='center'; ctx.textBaseline='middle';
@@ -3885,6 +3956,13 @@ function drawThreatIndicator(){
 }
 
 // Render via requestAnimationFrame when the tab is visible.
+// FIXED TIMESTEP: the simulation always advances at exactly SIM_HZ ticks/second,
+// decoupled from the display refresh rate. Without this, everything (enemies included)
+// ran "per frame", so on Android — where the panel jumps from 60Hz to 120Hz the moment
+// you touch to move — the whole game sped up while you moved. render() still runs once
+// per animation frame; only update() is rate-locked, so motion is smooth AND consistent.
+const SIM_HZ=60, SIM_STEP=1000/SIM_HZ, SIM_MAX_STEPS=5;
+let simAcc=0, simPrev=performance.now();
 function loop(){
   // adaptive quality: sample average frame time and step quality up/down so
   // mid-range Android keeps a smooth framerate.
@@ -3899,7 +3977,18 @@ function loop(){
     }
   }
   gfx._t=now;
-  if(!document.hidden){ update(); render(); if(state==='menu') menuAnimTick(); }
+  if(!document.hidden){
+    let frame=now-simPrev; simPrev=now;
+    if(frame>250) frame=250;                       // clamp after a stall/tab-switch — no spiral of death
+    simAcc+=frame;
+    let steps=0;
+    while(simAcc>=SIM_STEP && steps<SIM_MAX_STEPS){ update(); simAcc-=SIM_STEP; steps++; }
+    if(steps===SIM_MAX_STEPS) simAcc=0;            // device can't keep up — drop the backlog, stay real-time
+    render();
+    if(state==='menu') menuAnimTick();
+  } else {
+    simPrev=now;                                   // hidden: the Web Worker drives update(); keep our clock fresh
+  }
   requestAnimationFrame(loop);
 }
 // animate the live weapon / character preview while the menu is open
