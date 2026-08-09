@@ -4414,10 +4414,21 @@ if('serviceWorker' in navigator){
     }
     if(rankHead) rankHead.textContent = user ? '🌎 RANKING GLOBAL' : '★ Top Scores ★';
   }
-  function login(){
+  async function login(){
     const p=new firebase.auth.GoogleAuthProvider();
-    if(isMobile()) auth.signInWithRedirect(p);
-    else auth.signInWithPopup(p).catch(()=>auth.signInWithRedirect(p));
+    p.setCustomParameters({ prompt:'select_account' });
+    try{
+      await auth.signInWithPopup(p);            // works on modern mobile + desktop; instant feedback
+    }catch(err){
+      const code=err && err.code || '';
+      if(code==='auth/popup-closed-by-user' || code==='auth/cancelled-popup-request') return;  // user backed out
+      if(code==='auth/popup-blocked' || code==='auth/operation-not-supported-in-this-environment'){
+        try{ await auth.signInWithRedirect(p); }
+        catch(e2){ alert('No se pudo iniciar sesión (redirect): '+((e2&&e2.code)||(e2&&e2.message)||e2)); }
+        return;
+      }
+      alert('No se pudo iniciar sesión: '+(code||(err&&err.message)||err));
+    }
   }
   if(authBtn) authBtn.onclick=()=>{
     if(user){ if(confirm('¿Cerrar sesión? Tus datos quedan guardados en la nube.')) auth.signOut().catch(()=>{}); }
@@ -4429,7 +4440,7 @@ if('serviceWorker' in navigator){
     firebase.initializeApp(firebaseConfig);
     auth=firebase.auth(); db=firebase.firestore();
     try{ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL); }catch(e){}
-    auth.getRedirectResult().catch(()=>{});
+    auth.getRedirectResult().catch(err=>{ if(err && err.code) alert('Login (redirect): '+err.code); });
     auth.onAuthStateChanged(u=>{
       user=u||null;
       if(user){ pullMerge(); startLeaderboard(); }
