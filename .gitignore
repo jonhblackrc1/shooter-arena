@@ -14,3 +14,6 @@ server.ps1
 android/build/
 android/*.apk
 android/*.jks
+*.idsig
+/ShooterArena.apk
+*.jks
