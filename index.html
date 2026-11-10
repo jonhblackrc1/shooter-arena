@@ -521,7 +521,7 @@
 
 <div class="hud" id="hud" style="display:none">
   <div>
-    <div class="lvl" id="lvlText">LEVEL 1</div>
+    <div class="lvl" id="lvlText">NIVEL 1 · FASE 1</div>
     <div id="livesText" style="display:none;font-size:15px;color:#ff7a9d;margin-top:2px">♥</div>
     <div class="hpbar"><div class="hpfill" id="hpfill" style="width:100%"></div></div>
     <div class="hpbar" id="shieldbar" style="display:none;margin-top:3px;border-color:#3a6a8c;background:#162635"><div id="shieldfill" style="height:100%;background:linear-gradient(90deg,#5ad1ff,#9be3ff);width:0%;transition:width .15s"></div></div>
@@ -908,6 +908,20 @@ const LEVELS=[
     });
   }
 })();
+
+// ============================================================
+//  5 NIVELES × 10 FASES — the 50 stages above become phases. Only phase 10 of
+//  each level has the level's final boss (indices 9,19,29,39,49).
+// ============================================================
+const PHASES_PER_LEVEL=10;
+const NUM_LEVELS=5;
+function stageLevel(idx){ return Math.floor(idx/PHASES_PER_LEVEL)+1; }   // 1..5
+function stagePhase(idx){ return (idx%PHASES_PER_LEVEL)+1; }             // 1..10
+function stageLabel(idx){ return 'NIVEL '+stageLevel(idx)+' · FASE '+stagePhase(idx); }
+LEVELS.forEach((L,i)=>{
+  L.name=stageLabel(i);
+  if(stagePhase(i)!==PHASES_PER_LEVEL) L.boss=null;   // boss only on the final phase
+});
 
 // Hard cap: never more than 10 enemies alive at once (the rest queue and trickle in).
 function levelMaxAlive(lvl){ return 10; }
@@ -1553,7 +1567,7 @@ function weaponStatPct(key){
   return {
     dmg:  Math.round(Math.min(100, (w.dmg*(w.pellets||1))/14*100)),
     rate: Math.round(Math.min(100, (1/w.fireRate)/0.2*100)),
-    range:Math.round(Math.min(100, (w.speed)/13*100)),
+    range:100,   // all weapons have global (full-map) range
     acc:  Math.round(Math.min(100, (1-(w.spread||0)/0.6)*100)),
   };
 }
@@ -1734,7 +1748,7 @@ function drawSoldierSprite(g, ch, r, t){
 
 // ---- Game Modes panel ----
 const GAME_MODES=[
-  { id:'survival', icon:'⚔', name:'SURVIVAL',     desc:'50 levels · 10 bosses · 6 enemy types', levels:50, sel:true  },
+  { id:'survival', icon:'⚔', name:'SURVIVAL',     desc:'5 niveles · 10 fases c/u · jefe final en la fase 10', levels:5, sel:true  },
   { id:'arcade',   icon:'⚡', name:'ARCADE',       desc:'Coming soon',                         levels:null,sel:false },
   { id:'endless',  icon:'♾', name:'ENDLESS',      desc:'Coming soon',                         levels:null,sel:false },
   { id:'coop',     icon:'👥', name:'CO-OP ONLINE', desc:'Coming soon',                         levels:null,sel:false },
@@ -2050,8 +2064,8 @@ function spawnPickup(kind, weapon){
   return {x:MAP_W/2,y:MAP_H/2,r,kind,weapon,bob:Math.random()*Math.PI*2};
 }
 
-// a boss caps every 5th level (levels 5,10,...,50 → indices 4,9,...,49)
-function levelHasBoss(idx){ return (idx+1)%5===0 && !!(LEVELS[idx] && LEVELS[idx].boss); }
+// the final boss caps phase 10 of every level (indices 9,19,29,39,49)
+function levelHasBoss(idx){ return stagePhase(idx)===PHASES_PER_LEVEL && !!(LEVELS[idx] && LEVELS[idx].boss); }
 // each boss leans into a signature ability (chosen by skin) so they feel distinct
 const BOSS_SIG={ tentacle:'area', insectoid:'area', swarm:'summon', slimeking:'summon',
                  mech:'beam', cyclops:'beam', crystal:'fan', hydra:'fan',
@@ -2345,16 +2359,12 @@ function bulletImpact(b, x, y){
     spawnParticles(x,y,'#f5d77a',6);
   }
 }
-// Fixed circular attack range, same in every direction.
-// Uses half the smaller visible dimension so the range always fits on screen.
-function attackRange(){ return (Math.min(VW, VH) / 2) * 1.25; }
-// nearest enemy within the given player's attack radius
+// nearest enemy anywhere on the map (weapons are global — no attack radius)
 function nearestEnemyTo(p){
   let best=null,bd=1e9;
-  const range=attackRange();
   for(const e of enemies){
+    if(e.out) continue;
     const d=Math.hypot(e.x-p.x,e.y-p.y);
-    if(d-e.r > range) continue; // outside the circular attack radius
     if(d<bd){bd=d;best=e;}
   }
   return best;
@@ -2373,7 +2383,7 @@ function nearestPlayerTo(e){
 //      passes very close to an enemy, nudge it just enough to graze the target.
 //      If it already hits, or nothing is within the small margin, leave `a` alone. ----
 function aimAssist(px, py, a){
-  const RANGE=1100, MAX_CORRECT=0.20;   // ~11° cap — noticeable but never auto-aim
+  const RANGE=1e9, MAX_CORRECT=0.20;   // global range   // ~11° cap — noticeable but never auto-aim
   const dx=Math.cos(a), dy=Math.sin(a);
   let best=null, bestPerp=1e9;
   for(const e of enemies){
@@ -2400,8 +2410,12 @@ function readLocalInput(){
   if(keys['a']||keys['arrowleft'])mx-=1;
   if(keys['d']||keys['arrowright'])mx+=1;
   const aimJoyActive = aimJoy.active && Math.hypot(aimJoy.dx,aimJoy.dy)>8;
-  const atk = aimJoyActive || mouseFireHeld || keys[' '] || keys['k'];
-  return {mx,my,atk};
+  const keyFire = keys[' '] || keys['k'];
+  // tapping/holding the fire stick WITHOUT dragging, or firing with the keyboard,
+  // auto-targets the nearest enemy
+  const autoAim = (aimJoy.active && !aimJoyActive) || (keyFire && !mouseFireHeld);
+  const atk = aimJoy.active || mouseFireHeld || keyFire;
+  return {mx,my,atk,autoAim};
 }
 
 // ---- Update ----
@@ -2435,7 +2449,10 @@ function update(){
       // manual aim: local player uses mouse or right joystick; remote players use snapshot/network aim
       if(p.isLocal){
         const aimJoyActive = aimJoy.active && Math.hypot(aimJoy.dx,aimJoy.dy)>8;
-        if(aimJoyActive){
+        const autoT = (inp.autoAim && inp.atk) ? nearestEnemyTo(p) : null;
+        if(autoT){
+          p.aim=Math.atan2(autoT.y-p.y, autoT.x-p.x);   // auto-aim at the nearest enemy
+        } else if(aimJoyActive){
           p.aim=Math.atan2(aimJoy.dy,aimJoy.dx);
         } else {
           const wx=cam.x+mouseScreenX/ZOOM, wy=cam.y+mouseScreenY/ZOOM;
@@ -2650,8 +2667,14 @@ function update(){
 
 function levelClear(){
   addScore(500*(level+1)); // level-clear bonus, grows each level
-  money+=5; saveMoney(); updateMenuHiscore();
-  showToast('+5 ORO');
+  money+=5;
+  const levelDone = stagePhase(level)===PHASES_PER_LEVEL;
+  if(levelDone){                                   // beat the final boss → level complete
+    money+=25;
+    players.forEach(p=>{ if(!p.out){ p.hp=p.maxHp; } });   // full heal for the next level
+    showToast('+30 ORO');
+  } else showToast('+5 ORO');
+  saveMoney(); updateMenuHiscore();
   if(level+1>=LEVELS.length){ gameOver(true); }
   else {
     state='transition';
@@ -3101,12 +3124,6 @@ function render(){
       ctx.globalAlpha=0.5; circle(p.x,p.y,p.r*0.7,'#5a2330'); ctx.globalAlpha=1;
       continue;
     }
-    // attack range ring only for the player this device controls
-    if(p===localPlayer){
-      const rng=attackRange();
-      ctx.strokeStyle='rgba(245,215,122,0.15)'; ctx.lineWidth=2;
-      ctx.beginPath(); ctx.arc(p.x-cam.x, p.y-cam.y, rng, 0, Math.PI*2); ctx.stroke();
-    }
     // elemental power aura (weapon empowered) — drawn under the soldier
     if(p.powerTimer>0){
       const pu=POWERUPS[p.powerType], px=p.x-cam.x, py=p.y-cam.y, tt=performance.now()*0.005;
@@ -3160,7 +3177,16 @@ function render(){
     ctx.fillStyle='rgba(7,8,15,0.6)'; ctx.fillRect(0,0,W,H);
     ctx.fillStyle='#f5d77a'; ctx.textAlign='center';
     ctx.font='bold '+Math.min(W*0.08,48)+'px Trebuchet MS';
-    ctx.fillText('LEVEL '+(level+2), W/2, H/2);
+    const nx=level+1;
+    if(stagePhase(nx)===1){
+      ctx.fillText('NIVEL '+stageLevel(nx), W/2, H/2-10);
+      ctx.font='bold '+Math.min(W*0.04,24)+'px Trebuchet MS'; ctx.fillStyle='#caa3ff';
+      ctx.fillText('FASE 1 / '+PHASES_PER_LEVEL, W/2, H/2+26);
+    } else {
+      ctx.fillText('FASE '+stagePhase(nx)+' / '+PHASES_PER_LEVEL, W/2, H/2-10);
+      ctx.font='bold '+Math.min(W*0.035,20)+'px Trebuchet MS'; ctx.fillStyle='#caa3ff';
+      ctx.fillText(stagePhase(nx)===PHASES_PER_LEVEL ? '¡JEFE FINAL!' : 'NIVEL '+stageLevel(nx), W/2, H/2+24);
+    }
   }
 }
 

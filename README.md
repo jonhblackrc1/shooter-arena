@@ -2,7 +2,8 @@
 
 Top-down alien shooter — PWA jugable en navegador y móvil.
 
-- **20 niveles**, 4 jefes alienígenas
+- **5 niveles × 10 fases**, con un jefe final en la fase 10 de cada nivel
+- Disparo automático al enemigo más cercano si disparas sin apuntar; todas las armas con alcance global
 - Tienda de armas, selección de personaje, modos de juego y ranking
 - Apuntado manual (mouse en PC, joystick derecho en móvil)
 - Instalable como app (PWA) y empaquetable como APK para Play Store
