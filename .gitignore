@@ -9,3 +9,8 @@ Thumbs.db
 
 # Local dev server script (not part of the deployable app)
 server.ps1
+
+# Android build
+android/build/
+android/*.apk
+android/*.jks

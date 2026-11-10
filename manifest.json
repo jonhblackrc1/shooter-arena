@@ -2,7 +2,7 @@
   "name": "Shooter Arena",
   "short_name": "Shooter",
   "id": "/shooter-arena/",
-  "description": "Top-down alien shooter. 20 levels, 4 alien bosses.",
+  "description": "Top-down alien shooter. 5 niveles x 10 fases, 5 jefes finales.",
   "start_url": "index.html",
   "scope": "./",
   "display": "fullscreen",

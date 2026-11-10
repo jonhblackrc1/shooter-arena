@@ -28,3 +28,13 @@ Luego abre http://localhost:8099
 | `manifest.json` | Manifiesto PWA |
 | `icon-192.png`, `icon-512.png` | Íconos de la app |
 | `peerjs.min.js` | Librería P2P (co-op, en pausa) |
+
+## APK Android
+
+La carpeta `android/` contiene un contenedor WebView mínimo que incluye el juego dentro de la APK (funciona sin internet, en horizontal y a pantalla completa). Para compilarla:
+
+```bash
+KS_PASS=<tu-clave> ./android/build.sh
+```
+
+La clave de firma (`android/keystore.jks`) no se sube al repositorio: guarda tu copia, porque es necesaria para publicar actualizaciones de la misma app.
